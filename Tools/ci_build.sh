@@ -23,7 +23,7 @@ if [ "$MODE" = full ]; then
     --texture-atlas MerkOfDuty/Resources/MerkAtlas.png \
     --scale 0.01 --max-triangles 1000000 --max-source-coordinate 50000
   python3 Tools/bake_collision.py MerkOfDuty/Resources/MerkMap.meshbin \
-    --out MerkOfDuty/Resources/MerkCollision.bin --cell-size 0.75
+    --out MerkOfDuty/Resources/MerkCollision.bin --cell-size 0.75 --playable-radius 160
   python3 Tools/download_weapons.py --out build/recovered-weapons
   for item in \
     'M27:t6_wpn_ar_hk416_view_lod0' \

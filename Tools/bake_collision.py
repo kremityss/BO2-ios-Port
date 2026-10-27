@@ -48,9 +48,11 @@ def cm(y):
     return max(-32767, min(32767, round(y*100)))
 
 
-def bake(source, dest, resolution=0.75):
+def bake(source, dest, resolution=0.75, playable_radius=None):
     if not 0.3 <= resolution <= 3.0:
         raise ValueError('resolution must be 0.3..3m')
+    if playable_radius is not None and not 10 <= playable_radius <= 1000:
+        raise ValueError('playable_radius must be 10..1000m')
     tri = list(triangles(source))
     if not tri:
         raise ValueError('empty mesh')
@@ -58,6 +60,13 @@ def bake(source, dest, resolution=0.75):
     zs = [p[2] for a,b,c,_ in tri for p in (a,b,c)]
     xmin,xmax = min(xs), max(xs)
     zmin,zmax = min(zs), max(zs)
+    # A large outdoor scene can contain 700m+ of sky, scenery and outskirts.
+    # Bake only the playable core into the 2.5D collision format, while leaving
+    # render geometry untouched. The GLB converter centers horizontal geometry
+    # on (0,0), so the gameplay crop uses that same world-space origin.
+    if playable_radius is not None:
+        xmin,xmax = -playable_radius, playable_radius
+        zmin,zmax = -playable_radius, playable_radius
     originX = math.floor(xmin/resolution)*resolution-resolution
     originZ = math.floor(zmin/resolution)*resolution-resolution
     w = math.ceil((xmax-originX)/resolution)+2
@@ -68,7 +77,15 @@ def bake(source, dest, resolution=0.75):
     bottom=[MISSING]*(w*h)
     top=[MISSING]*(w*h)
     groundTriangles=wallTriangles=0
+    rejected=0
     for a,b,c,n in tri:
+        # Avoid spending CPU on off-map terrain triangles and extended sky.
+        if playable_radius is not None:
+            bx0=min(a[0],b[0],c[0]);bx1=max(a[0],b[0],c[0])
+            bz0=min(a[2],b[2],c[2]);bz1=max(a[2],b[2],c[2])
+            if bx1 < xmin or bx0 > xmax or bz1 < zmin or bz0 > zmax:
+                rejected+=1
+                continue
         ymin,ymax=min(a[1],b[1],c[1]),max(a[1],b[1],c[1])
         if n[1] > 0.58:
             groundTriangles+=1
@@ -110,7 +127,7 @@ def bake(source, dest, resolution=0.75):
             out.write(struct.pack('<hhh',*cell))
     stats={'source':str(source),'out':str(dest),'width':w,'height':h,'cell_size':resolution,
            'floor_triangles':groundTriangles,'wall_triangles':wallTriangles,'walkable_cells':walkable,
-           'bytes':dest.stat().st_size}
+           'bytes':dest.stat().st_size, 'playable_radius':playable_radius, 'off_core_triangles':rejected}
     print(json.dumps(stats,indent=2))
     return stats
 
@@ -119,5 +136,6 @@ if __name__=='__main__':
     p.add_argument('mesh',type=Path)
     p.add_argument('--out',type=Path,default=Path('MerkOfDuty/Resources/MerkCollision.bin'))
     p.add_argument('--cell-size',type=float,default=0.75)
+    p.add_argument('--playable-radius',type=float,default=None,help='Crop approximate collision to +/- meters around centered map origin')
     x=p.parse_args()
-    bake(x.mesh,x.out,x.cell_size)
+    bake(x.mesh,x.out,x.cell_size,x.playable_radius)
