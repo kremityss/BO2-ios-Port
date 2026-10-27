@@ -248,15 +248,18 @@ def align_weapon(p, direction):
     return p
 
 
-def convert(source, output, scale, limit, center=True, texture_atlas=None, weapon_length=None):
+def convert(source, output, scale, limit, center=True, texture_atlas=None, weapon_length=None, max_source_coordinate=None):
     doc, buffers = load_gltf(source)
     textured = texture_atlas is not None
     rects = {-1:(0.,0.,1.,1.)}
     atlas_errors = []
     if textured:
         rects, atlas_errors = build_atlas(doc,buffers,source,texture_atlas)
+    if max_source_coordinate is not None and max_source_coordinate <= 0:
+        raise ValueError('max_source_coordinate must be positive')
     raw_triangles = []
     unsupported = 0
+    excluded_outlier_triangles = 0
     weapon_axis = None
     if weapon_length is not None:
         if weapon_length <= 0:
@@ -291,6 +294,16 @@ def convert(source, output, scale, limit, center=True, texture_atlas=None, weapo
                     raise ValueError(f'GLB has more than {limit} triangles; increase --max-triangles')
                 tri_indices=indices[i:i+3]
                 a,b,c=[world[j] for j in tri_indices]
+                # The published Nuketown GLB includes enormous sky/environment
+                # geometry (hundreds of millions of source units). Such triangles
+                # break the floor/collision raster and make camera culling useless.
+                # Opt-in scene-space cutoff: leave weapon models and ordinary
+                # conversion untouched, and record every excluded triangle.
+                if max_source_coordinate is not None and any(
+                        not math.isfinite(n) or abs(n) > max_source_coordinate
+                        for vertex in (a,b,c) for n in vertex):
+                    excluded_outlier_triangles += 1
+                    continue
                 u=tuple(b[k]-a[k] for k in range(3))
                 v=tuple(c[k]-a[k] for k in range(3))
                 normal=normalize(cross(u,v))
@@ -304,7 +317,9 @@ def convert(source, output, scale, limit, center=True, texture_atlas=None, weapo
                                    math.sin(texrotate)*rx + math.cos(texrotate)*ry + texoffset[1]))
                 raw_triangles.append(((a,b,c),normal,color,tuple(uv),region))
     if not raw_triangles:
-        raise ValueError('No convertible triangles; model may use meshopt/draco compressed data')
+        raise ValueError('No convertible triangles remain; check scene bounds and coordinate cutoff')
+    if excluded_outlier_triangles and excluded_outlier_triangles > len(raw_triangles):
+        raise ValueError('Over half of source geometry exceeded --max-source-coordinate; check scene scale')
     minp=[min(p[i] for tri,_,_,_,_ in raw_triangles for p in tri) for i in range(3)]
     maxp=[max(p[i] for tri,_,_,_,_ in raw_triangles for p in tri) for i in range(3)]
     offset=[(minp[0]+maxp[0])/2, ((minp[1]+maxp[1])/2 if weapon_length is not None else minp[1]), (minp[2]+maxp[2])/2] if center else [0,0,0]
@@ -322,7 +337,9 @@ def convert(source, output, scale, limit, center=True, texture_atlas=None, weapo
                       'unhandled_primitives':unsupported,'source_bounds':[minp,maxp],
                       'output_bytes':output.stat().st_size,'scale':scale,
                       'weapon_alignment_axis':weapon_axis,'textured':textured,'atlas':str(texture_atlas) if textured else None,
-                      'missing_textures':atlas_errors[:30],'missing_texture_count':len(atlas_errors)},indent=2))
+                      'missing_textures':atlas_errors[:30],'missing_texture_count':len(atlas_errors),
+                      'excluded_outlier_triangles':excluded_outlier_triangles,
+                      'max_source_coordinate':max_source_coordinate},indent=2))
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
@@ -333,7 +350,8 @@ def main():
     p.add_argument('--keep-origin',action='store_true')
     p.add_argument('--texture-atlas',type=Path,help='Write PNG atlas and MERKMAP2 UV vertices (requires Pillow)')
     p.add_argument('--weapon-length',type=float,help='Normalize model largest axis to meters and orient its longest axis as Z')
+    p.add_argument('--max-source-coordinate',type=float,help='Exclude remote environment/sky triangles outside +/- this many source units')
     args=p.parse_args()
-    convert(args.glb,args.out,args.scale,args.max_triangles,not args.keep_origin,args.texture_atlas,args.weapon_length)
+    convert(args.glb,args.out,args.scale,args.max_triangles,not args.keep_origin,args.texture_atlas,args.weapon_length,args.max_source_coordinate)
 
 if __name__ == '__main__':main()

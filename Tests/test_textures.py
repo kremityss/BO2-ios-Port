@@ -73,6 +73,21 @@ class TexturedMapTests(unittest.TestCase):
             out=Path(tmp)/'MerkCollision.bin'
             self.assertGreater(bake(mesh,out,0.5)['walkable_cells'],0)
 
+    def test_far_environment_geometry_excluded_from_map_collision(self):
+        # Regresses the real deployed map failure (source bounds +/- 536m
+        # units before conversion). Keep usable ground while excluding sky.
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture, doc, _ = make_textured_fixture(tmp)
+            doc['nodes'].append({'mesh':0,'translation':[100000,0,0]})
+            doc['scenes'][0]['nodes'].append(1)
+            fixture.write_text(json.dumps(doc))
+            mesh = Path(tmp)/'MerkMap.meshbin'
+            convert(fixture, mesh, 1, 100, max_source_coordinate=50000)
+            self.assertEqual(struct.unpack_from('<I',mesh.read_bytes(),8)[0],3)
+            collision = Path(tmp)/'MerkCollision.bin'
+            self.assertGreater(bake(mesh,collision,0.5)['walkable_cells'],0)
+            self.assertLess(collision.stat().st_size, 1000)
+
     def test_external_png_material(self):
         with tempfile.TemporaryDirectory() as tmp:
             path,doc,encoded=make_textured_fixture(tmp,'external')
