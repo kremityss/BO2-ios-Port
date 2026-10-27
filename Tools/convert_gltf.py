@@ -115,9 +115,26 @@ def accessor_values(doc, buffers, index):
     stride = view.get('byteStride',size)
     start = view.get('byteOffset',0) + a.get('byteOffset',0)
     raw = buffers[view['buffer']]
+    if stride < size:
+        raise ValueError('Accessor byteStride smaller than element size')
+    if start < 0 or start + (a['count'] - 1) * stride + size > len(raw):
+        raise ValueError('Accessor extends beyond its buffer')
+    normalized = bool(a.get('normalized', False))
+    component_type = a['componentType']
+    if normalized and component_type not in (5120, 5121, 5122, 5123):
+        raise ValueError('Normalized glTF accessor must use BYTE or SHORT components')
+    # glTF section 3.6.2.1: signed normalized integers map -128/-32768
+    # exactly to -1; unsigned integers map 0..255/65535 to 0..1.
+    denominator = {5120:127.0, 5121:255.0, 5122:32767.0, 5123:65535.0}.get(component_type)
     result = []
     for i in range(a['count']):
-        result.append(struct.unpack_from(f,raw,start+i*stride))
+        values = struct.unpack_from(f,raw,start+i*stride)
+        if normalized:
+            if component_type in (5120,5122):
+                values = tuple(max(-1.0, value / denominator) for value in values)
+            else:
+                values = tuple(value / denominator for value in values)
+        result.append(values)
     return result
 
 
