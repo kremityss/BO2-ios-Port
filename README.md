@@ -217,3 +217,15 @@ map or each weapon. This guards against falsely claiming a textured game.
 Texture decoding, original on-device appearance, materials, and FPS still
 require validation against the real map. The game remains an unfinished
 native reconstruction, not a complete multiplayer/Zombies port.
+
+### v0.5.2 — Weapon WebP recovery
+
+The texture-enabled v0.5.1 full build decoded the map's embedded KTX2 but
+failed at the first weapon because its GLB URIs reference `../images/*.dds`.
+Those are legitimate sibling-image references, and Cloudflare publishes the
+textures at `/images/*.webp`. The v0.5.2 downloader fetches only that
+explicitly allowed sibling location, verifies the WebP header, and the native
+converter maps an archived DDS reference to the downloaded image. Other parent
+traversal remains blocked. Unit tests cover safe resolution, the WebP fetch,
+and forbidden paths. The requested map and weapon render still need to be
+verified in the compiled and on-device IPA.

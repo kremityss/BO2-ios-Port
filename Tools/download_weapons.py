@@ -10,7 +10,8 @@ import struct
 import urllib.request
 from pathlib import Path
 from urllib.parse import quote, unquote, urlsplit
-from download_level import BASE, fetch_external_images
+from pathlib import PurePosixPath
+from download_level import BASE
 
 WEAPONS = {
     'M27':'viewmodel/t6_wpn_ar_hk416_view_lod0.glb',
@@ -54,6 +55,50 @@ def download_resource(base, folder, relative):
     return filepath
 
 
+def fetch_weapon_images(glb, folder, base, limit=256):
+    """Recover deploy-staged WebP variants for original ../images/*.dds.
+
+    The archived glTF references viewmodel/../images, but the public Pages
+    deployment contains images/<name>.webp. Only that exact sibling folder is
+    accepted; arbitrary parent traversal, URL schemes and foreign hosts fail.
+    """
+    doc = read_manifest(glb)
+    results = {'downloaded':[], 'missing':[], 'referenced_images':len(doc.get('images', []))}
+    for image in doc.get('images', []):
+        uri = image.get('uri')
+        if not uri or uri.startswith('data:'):
+            continue
+        parsed = urlsplit(uri)
+        if parsed.scheme or parsed.netloc or uri.startswith('/'):
+            results['missing'].append({'image':uri,'reason':'external URL'}); continue
+        clean = unquote(parsed.path)
+        if not clean.startswith('../images/') or clean.count('../') != 1:
+            results['missing'].append({'image':uri,'reason':'image path outside approved sibling folder'}); continue
+        basename = clean[len('../images/'):]
+        if not basename or '/' in basename or not basename.lower().endswith('.dds'):
+            results['missing'].append({'image':uri,'reason':'unsupported texture path'});continue
+        stem = basename[:-4]
+        if len(results['downloaded']) >= limit:
+            results['missing'].append({'image':uri,'reason':'limit reached'});continue
+        dest = (folder/'images'/f'{stem}.webp').resolve()
+        if not dest.is_relative_to(folder.resolve()):
+            results['missing'].append({'image':uri,'reason':'unsafe output'});continue
+        if dest.exists():continue
+        url = base.rstrip('/') + '/images/' + quote(stem+'.webp', safe='')
+        try:
+            req=urllib.request.Request(url,headers={'User-Agent':'MerkOfDutyNative/0.5'})
+            with urllib.request.urlopen(req,timeout=45) as response:
+                data=response.read(12_000_001)
+            if len(data)>12_000_000 or not data.startswith(b'RIFF') or data[8:12] != b'WEBP':
+                raise ValueError('not a valid published WebP texture')
+            dest.parent.mkdir(parents=True,exist_ok=True)
+            dest.write_bytes(data)
+            results['downloaded'].append(uri)
+        except (OSError,ValueError) as e:
+            results['missing'].append({'image':uri,'reason':str(e)})
+    return results
+
+
 def download(folder,base=BASE):
     folder.mkdir(parents=True,exist_ok=True)
     results={}
@@ -70,7 +115,7 @@ def download(folder,base=BASE):
         from convert_gltf import load_gltf
         doc,buffers=load_gltf(glb)
         # GLB texture URIs resolve relative to the viewmodel subfolder.
-        textures=fetch_external_images(glb.parent,base+'/viewmodel',limit=256,glb_name=glb.name)
+        textures=fetch_weapon_images(glb,folder,base,limit=256)
         results[key]={'glb':str(glb),'sidecars':sidecars,'textures':textures}
     (folder/'weapons-recovery.json').write_text(json.dumps(results,indent=2))
     return results

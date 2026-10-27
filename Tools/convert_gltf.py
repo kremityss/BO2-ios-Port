@@ -167,9 +167,22 @@ def image_bytes(doc, buffers, source, base_dir):
             return base64.b64decode(uri.split(',', 1)[1])
         if '://' in uri or uri.startswith('/'):
             raise ValueError('Remote or absolute texture URI is not supported')
-        file = (base_dir / unquote(uri.split('?', 1)[0])).resolve()
+        decoded = unquote(uri.split('?', 1)[0])
+        file = (base_dir / decoded).resolve()
         if not file.is_relative_to(base_dir.resolve()):
-            raise ValueError('Texture path traverses outside the asset folder')
+            # The deployed weapon models refer to ../images/*.dds. Recovered
+            # PNG/WebP variants are stored only inside the sibling images/
+            # folder of the same recovered assets root.
+            if not (base_dir.name == 'viewmodel' and decoded.startswith('../images/')
+                    and decoded.count('../') == 1
+                    and file.is_relative_to(base_dir.parent.resolve()/'images')):
+                raise ValueError('Texture path traverses outside the asset folder')
+        if not file.exists() and file.suffix.lower() == '.dds':
+            for extension in ('.webp','.png'):
+                replacement = file.with_suffix(extension)
+                if replacement.is_file():
+                    file = replacement
+                    break
         return file.read_bytes()
     view = doc['bufferViews'][img['bufferView']]
     start = view.get('byteOffset', 0)
