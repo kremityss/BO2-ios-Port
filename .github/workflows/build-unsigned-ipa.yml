@@ -47,7 +47,9 @@ jobs:
           retention-days: 7
 
   full-assets-ipa:
-    if: github.event_name == 'workflow_dispatch' && inputs.full_assets
+    # Explicit one-shot push opt-in: add [full assets] to a commit message.
+    # Keeps expensive map builds off normal pushes; manual dispatch also works.
+    if: (github.event_name == 'workflow_dispatch' && inputs.full_assets) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[full assets]'))
     needs: offline-ipa
     name: Compile Nuketown + weapons IPA
     runs-on: macos-15

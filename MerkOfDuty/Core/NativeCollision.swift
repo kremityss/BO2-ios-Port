@@ -30,6 +30,7 @@ final class NativeCollision {
         height=h
         originX=f32(12)
         originZ=f32(16)
+        guard originX.isFinite && originZ.isFinite else { return nil }
         resolution=cellSize
         var heights=[Int16](), low=[Int16](), high=[Int16]()
         heights.reserveCapacity(w*h)
@@ -96,6 +97,13 @@ final class NativeCollision {
             }
         }
         return false
+    }
+
+    /// Start near the actual imported map center, not the training arena's (0, 0).
+    func preferredSpawn(eyeHeight: Float = 1.65) -> SIMD3<Float>? {
+        let centerX = originX + Float(width) * resolution * 0.5
+        let centerZ = originZ + Float(height) * resolution * 0.5
+        return spawn(nearX: centerX, z: centerZ, eyeHeight: eyeHeight)
     }
 
     func spawn(nearX:Float,z:Float,eyeHeight:Float=1.65)->SIMD3<Float>? {

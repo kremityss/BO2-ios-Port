@@ -100,7 +100,7 @@ final class GameWorld {
     var right: SIMD3<Float> { SIMD3<Float>(cos(yaw), 0, sin(yaw)) }
 
     init() {
-        if let grid = NativeCollision.load(), let spawn = grid.spawn(nearX:0,z:0) {
+        if let grid = NativeCollision.load(), let spawn = grid.preferredSpawn() {
             levelCollision = grid
             initialPosition = spawn
             pos = spawn
@@ -206,8 +206,13 @@ final class GameWorld {
 
     private func resolveAxis(position p: SIMD2<Float>, axis: Int, change: Float) -> Float {
         var candidate = (axis == 0 ? p.x : p.y) + change
-        candidate = max(-35.0, min(35.0, candidate))
-        if axis == 1 { candidate = max(-29.0, min(29.0, candidate)) }
+        // Imported maps have their own world-space bounds. The old fixed
+        // training-arena limits stranded the player on maps offset from 0,0.
+        // The raster's canOccupy() rejects anything beyond its extent.
+        if levelCollision == nil {
+            candidate = max(-35.0, min(35.0, candidate))
+            if axis == 1 { candidate = max(-29.0, min(29.0, candidate)) }
+        }
         let probe = axis == 0 ? SIMD2<Float>(candidate, p.y) : SIMD2<Float>(p.x, candidate)
         if let grid=levelCollision {
             let height = controls.crouch || isSliding ? crouchHeight : eyeHeight
