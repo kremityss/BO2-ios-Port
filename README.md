@@ -229,3 +229,19 @@ converter maps an archived DDS reference to the downloaded image. Other parent
 traversal remains blocked. Unit tests cover safe resolution, the WebP fetch,
 and forbidden paths. The requested map and weapon render still need to be
 verified in the compiled and on-device IPA.
+
+## v0.6 mobile HUD and grounded spawns
+
+- Mobile landscape HUD updated to a compact native UIKit FPS layout: floating
+  left stick, right-look region, fire/ADS/jump/slide-or-crouch/reload/swap,
+  safe-area layout, radar, top health/score, and smaller ammo panel.
+- Forward full-stick auto-sprint; tap to ADS; moving slide and stationary
+  crouch/stand; smoother camera-height transitions, no automatic roof climb.
+- Nuketown spawn checks adjacent floor continuity and height at calibrated
+  ground-level regions, rather than selecting the first floor near map center.
+  A small **RESET** button in the top-right restores health and position.
+- Render surface limited to 2x logical screen resolution on very high-density
+  iPhone displays to reduce fill rate while leaving HUD sharp.
+
+These changes address a player screenshot showing a rooftop spawn and giant HUD.
+Actual on-device validation is required: this collision grid is still coarse.

@@ -21,6 +21,7 @@ final class GameRenderer: NSObject, MTKViewDelegate {
     private var previousTime = CACurrentMediaTime()
     private var hudAccum: Double = 0
     private var smoothedFPS: Double = 60
+    var measuredFPS: Int { Int(smoothedFPS) }
     private var frameIndex = 0
     private var storedWidth = 1
     private var storedHeight = 1

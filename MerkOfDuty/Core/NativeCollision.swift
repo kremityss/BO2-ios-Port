@@ -99,11 +99,79 @@ final class NativeCollision {
         return false
     }
 
-    /// Start near the actual imported map center, not the training arena's (0, 0).
+    /// Avoid the old "first nonempty cell near map center" spawn. That often
+    /// selected a roof/isolated elevated brush from the imported GLB.
+    /// These ground-sector anchors are calibrated to the shipped Nuketown 2025
+    /// MERKCOL1 grid. Every anchor is still validated against floor and wall
+    /// clearance so other builds fail over to a scored walkable cell.
     func preferredSpawn(eyeHeight: Float = 1.65) -> SIMD3<Float>? {
+        let anchors: [SIMD2<Float>] = [
+            SIMD2<Float>(39, -14),    // broad, low ground on east approach
+            SIMD2<Float>(-20, -61),   // west spawn-side paved corridor
+            SIMD2<Float>(-1, 31),    // central low approach
+            SIMD2<Float>(-19, 34)
+        ]
+        for anchor in anchors {
+            if let candidate = safeSpawn(nearX: anchor.x, z: anchor.y,
+                                         searchRadius: 10, eyeHeight: eyeHeight,
+                                         maxGroundY: 14, minimumSupport: 12) {
+                return candidate
+            }
+        }
         let centerX = originX + Float(width) * resolution * 0.5
         let centerZ = originZ + Float(height) * resolution * 0.5
-        return spawn(nearX: centerX, z: centerZ, eyeHeight: eyeHeight)
+        return safeSpawn(nearX: centerX, z: centerZ, searchRadius: 90,
+                         eyeHeight: eyeHeight, maxGroundY: 16, minimumSupport: 7)
+            ?? spawn(nearX: centerX, z: centerZ, eyeHeight: eyeHeight)
+    }
+
+    /// Sample neighboring cells for a broad contiguous floor at the same
+    /// elevation. Roof strips and isolated one-cell brush fragments score low.
+    private func supportCount(i: Int, j: Int, floorY: Float, eyeHeight: Float) -> Int {
+        var support = 0
+        for dz in -3...3 {
+            for dx in -3...3 {
+                let x = i + dx, z = j + dz
+                guard x >= 0, z >= 0, x < width, z < height else { continue }
+                let px = originX + (Float(x) + 0.5) * resolution
+                let pz = originZ + (Float(z) + 0.5) * resolution
+                if let y = floorHeight(x: px, z: pz), abs(y - floorY) <= 0.55,
+                   canOccupy(x: px, z: pz, feetY: y, bodyHeight: eyeHeight) {
+                    support += 1
+                }
+            }
+        }
+        return support
+    }
+
+    func safeSpawn(nearX: Float, z: Float, searchRadius: Float,
+                   eyeHeight: Float = 1.65, maxGroundY: Float = 16,
+                   minimumSupport: Int = 10) -> SIMD3<Float>? {
+        guard nearX.isFinite, z.isFinite, searchRadius > 0 else { return nil }
+        let cx = max(0, min(width-1, Int(floor((nearX-originX)/resolution))))
+        let cz = max(0, min(height-1, Int(floor((z-originZ)/resolution))))
+        let range = Int(ceil(searchRadius/resolution))
+        var bestScore: Float = -.infinity
+        var best: SIMD3<Float>?
+        for j in max(0,cz-range)...min(height-1,cz+range) {
+            for i in max(0,cx-range)...min(width-1,cx+range) {
+                let x = originX + (Float(i)+0.5)*resolution
+                let zz = originZ + (Float(j)+0.5)*resolution
+                let distance = hypot(x-nearX, zz-z)
+                guard distance <= searchRadius,
+                      let y = floorHeight(x:x,z:zz), y <= maxGroundY,
+                      canOccupy(x:x,z:zz,feetY:y,bodyHeight:eyeHeight) else {continue}
+                let support = supportCount(i:i,j:j,floorY:y,eyeHeight:eyeHeight)
+                guard support >= minimumSupport else {continue}
+                // Nearby broad floors win; tall isolated shelves lose.
+                let score = Float(support)*1.6 - distance*2.6 - max(0,y-9)*1.1
+                if score > bestScore {
+                    bestScore = score
+                    best = SIMD3<Float>(x,y+eyeHeight,zz)
+                }
+            }
+        }
+        return best
     }
 
     func spawn(nearX:Float,z:Float,eyeHeight:Float=1.65)->SIMD3<Float>? {

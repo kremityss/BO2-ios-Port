@@ -87,6 +87,8 @@ final class GameWorld {
     private(set) var isGrounded = true
     let levelCollision: NativeCollision?
     private var initialPosition = SIMD3<Float>(0,1.65,15)
+    private var standingEyeHeight: Float = 1.65
+    var lookSensitivity: Float = 1.0
     var hasImportedLevel: Bool { levelCollision != nil }
 
     var weapon: WeaponSpec { WeaponSpec.roster[weaponIndex] }
@@ -104,6 +106,10 @@ final class GameWorld {
             levelCollision = grid
             initialPosition = spawn
             pos = spawn
+            // Face into the central approaches, rather than outward at sky.
+            let facing = SIMD2<Float>(-12-spawn.x, 8-spawn.z)
+            yaw = atan2(facing.x, -facing.y)
+            pitch = 0
         } else {
             levelCollision = nil
             buildTrainingArena()
@@ -116,15 +122,18 @@ final class GameWorld {
         bots = points.enumerated().map { idx, p in
             let location:SIMD3<Float>
             if let grid=levelCollision {
-                location=(grid.spawn(nearX:initialPosition.x+p.x,z:initialPosition.z+p.z) ?? initialPosition)
-                    - SIMD3<Float>(0,eyeHeight,0)
+                location=(grid.safeSpawn(nearX:initialPosition.x+p.x,
+                                         z:initialPosition.z+p.z,
+                                         searchRadius:25,eyeHeight:eyeHeight,
+                                         maxGroundY:15,minimumSupport:7)
+                           ?? initialPosition) - SIMD3<Float>(0,eyeHeight,0)
             } else {location=p}
             return CombatBot(position:location,strafe:idx.isMultiple(of:2) ? 1 : -1)
         }
     }
 
     func aim(dx: Float, dy: Float) {
-        let sensitivity: Float = controls.ads ? 0.0018 : 0.0036
+        let sensitivity: Float = (controls.ads ? 0.0018 : 0.0036) * lookSensitivity
         yaw += dx * sensitivity
         pitch = max(-1.30, min(1.30, pitch - dy * sensitivity))
     }
@@ -164,9 +173,12 @@ final class GameWorld {
         let localForward = SIMD2<Float>(sin(yaw), -cos(yaw))
         let localRight = SIMD2<Float>(cos(yaw), sin(yaw))
         let desired = localRight * move.x + localForward * move.y
-        let fast = controls.sprint && !controls.ads && move.y > 0.15
-        let speed: Float = controls.crouch ? 2.25 : (fast ? 8.4 : (controls.ads ? 3.2 : 5.4))
-        let acceleration: Float = isGrounded ? 16 : 5.2
+        // COD-style analog response: partial stick gives walking, full forward
+        // stick engages tactical sprint. ADS, crouch and airborne acceleration
+        // remain distinct. Input is frame-rate independent.
+        let fast = controls.sprint && !controls.ads && move.y > 0.45 && !controls.crouch
+        let speed: Float = controls.crouch ? 2.35 : (fast ? 8.2 : (controls.ads ? 3.4 : 5.6))
+        let acceleration: Float = isGrounded ? 17.0 : 5.0
         horizontalVelocity += (desired * speed - horizontalVelocity) * min(1, dt * acceleration)
         if controls.slideQueued && isGrounded && simd_length(horizontalVelocity) > 3.1 {
             slideRemaining = 0.67
@@ -183,19 +195,28 @@ final class GameWorld {
         }
         verticalVelocity -= 17.8 * dt
         let targetEye = (controls.crouch || isSliding) ? crouchHeight : eyeHeight
+        let oldFeet = pos.y - standingEyeHeight
+        // Smooth camera height independently from physical feet; no standing
+        // transition can push the capsule into the ground.
+        standingEyeHeight += (targetEye-standingEyeHeight) * min(1, dt*11)
         var proposed = pos
-        proposed.y += verticalVelocity * dt
-        let oldGround=levelCollision?.floorHeight(x:pos.x,z:pos.z) ?? 0
-        if proposed.y <= oldGround+targetEye {
-            proposed.y = oldGround+targetEye
+        proposed.y = oldFeet + standingEyeHeight + verticalVelocity*dt
+        proposed.x = resolveAxis(position: SIMD2<Float>(pos.x,pos.z),axis:0,
+                                 change:horizontalVelocity.x*dt)
+        proposed.z = resolveAxis(position: SIMD2<Float>(proposed.x,pos.z),axis:1,
+                                 change:horizontalVelocity.y*dt)
+        let ground = levelCollision?.floorHeight(x:proposed.x,z:proposed.z) ?? 0
+        let feet = proposed.y-standingEyeHeight
+        if isGrounded && ground > oldFeet && ground-oldFeet <= 0.45 {
+            // Small curb/step-up; never teleport the player to a roof.
+            proposed.y = ground+standingEyeHeight
+            verticalVelocity = 0
+        } else if feet <= ground {
+            proposed.y = ground+standingEyeHeight
             verticalVelocity = 0
             isGrounded = true
-        }
-        proposed.x = resolveAxis(position: SIMD2<Float>(pos.x, pos.z), axis: 0, change: horizontalVelocity.x * dt)
-        proposed.z = resolveAxis(position: SIMD2<Float>(proposed.x, pos.z), axis: 1, change: horizontalVelocity.y * dt)
-        if isGrounded, let level=levelCollision,
-           let ground=level.floorHeight(x:proposed.x,z:proposed.z) {
-            proposed.y=ground+targetEye
+        } else if feet > ground+0.06 {
+            isGrounded = false
         }
         pos = proposed
         if simd_length(horizontalVelocity) > 0.3 && isGrounded { motionPhase += dt * (fast ? 15 : 10) } else { motionPhase *= 0.90 }
@@ -216,7 +237,12 @@ final class GameWorld {
         let probe = axis == 0 ? SIMD2<Float>(candidate, p.y) : SIMD2<Float>(p.x, candidate)
         if let grid=levelCollision {
             let height = controls.crouch || isSliding ? crouchHeight : eyeHeight
-            let footY = pos.y - height
+            let footY = pos.y - standingEyeHeight
+            // No instantaneous climb onto roofs or elevated platforms.
+            if let nextFloor = grid.floorHeight(x:probe.x,z:probe.y),
+               nextFloor > footY + (isGrounded ? 0.45 : 0.15) {
+                return axis == 0 ? p.x : p.y
+            }
             return grid.canOccupy(x:probe.x,z:probe.y,feetY:footY,bodyHeight:height)
                 ? candidate : (axis == 0 ? p.x : p.y)
         }
@@ -306,7 +332,10 @@ final class GameWorld {
                     if let grid=levelCollision {
                         let x=initialPosition.x+cos(theta)*16
                         let z=initialPosition.z+sin(theta)*13
-                        bots[i].position=(grid.spawn(nearX:x,z:z) ?? initialPosition) - SIMD3<Float>(0,eyeHeight,0)
+                        bots[i].position=(grid.safeSpawn(nearX:x,z:z,searchRadius:25,
+                                                        eyeHeight:eyeHeight,maxGroundY:15,
+                                                        minimumSupport:7) ?? initialPosition)
+                            - SIMD3<Float>(0,eyeHeight,0)
                     } else {
                         bots[i].position = SIMD3<Float>(cos(theta) * 20, 0, sin(theta) * 17)
                     }
@@ -352,11 +381,20 @@ final class GameWorld {
         }
     }
 
+    func debugRespawn() {
+        health = 100
+        respawnPlayer()
+    }
+
     private func respawnPlayer() {
         pos = initialPosition
         health = 100
         verticalVelocity = 0
         horizontalVelocity = .zero
+        standingEyeHeight = eyeHeight
+        controls.crouch = false
+        controls.ads = false
+        slideRemaining = 0
         reloadRemaining = 0
         isGrounded = true
         ammo = weapon.magazine
