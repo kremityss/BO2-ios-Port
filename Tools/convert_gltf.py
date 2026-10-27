@@ -18,6 +18,9 @@ import base64
 import json
 import math
 import struct
+import subprocess
+import tempfile
+import shutil
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -173,6 +176,62 @@ def image_bytes(doc, buffers, source, base_dir):
     return buffers[view['buffer']][start:start + view['byteLength']]
 
 
+def texture_image_index(doc, texture_index):
+    texture = doc.get('textures', [])[texture_index]
+    # glTF KHR_texture_basisu stores its image source in the extension, not
+    # the legacy "source" field. The entire deployed Nuketown scene uses it.
+    basis = texture.get('extensions', {}).get('KHR_texture_basisu', {})
+    return basis.get('source', texture.get('source'))
+
+
+def decode_ktx2(raw):
+    """Decode one embedded Basis UASTC/ETC1S KTX2 image via basisu CLI.
+
+    The build machine must install `basisu` (Homebrew: basis_universal).
+    Transcoding to PNG is a build-time step; the iPhone receives only PNG atlas
+    textures and never needs a transcoder or WebGL runtime.
+    """
+    from PIL import Image
+    if not shutil.which('basisu'):
+        raise RuntimeError('KTX2 requires basisu CLI; install basis_universal on build runner')
+    with tempfile.TemporaryDirectory(prefix='merk-basis-') as tmp:
+        folder = Path(tmp)
+        input_file = folder / 'image.ktx2'
+        input_file.write_bytes(raw)
+        try:
+            subprocess.run(['basisu', '-unpack', '-no_ktx', '-file', str(input_file),
+                            '-output_path', str(folder)], cwd=folder,
+                           timeout=90, check=True, capture_output=True)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+            raise OSError(f'basisu KTX2 transcode failed: {exc}') from exc
+        files = list(folder.rglob('*.png'))
+        if not files:
+            raise OSError('basisu produced no PNG output for embedded KTX2')
+        # Prefer actual RGBA slices, then RGB. A suffix describing an alpha-only
+        # plane should not accidentally be chosen as the material's albedo.
+        def rank(path):
+            name=path.name.lower()
+            return (0 if 'rgba' in name else (1 if 'rgb' in name else 2),
+                    1 if '_a_' in name or 'alpha' in name else 0,
+                    0 if 'mip0' in name or '_0_' in name else 1,
+                    name)
+        choice = sorted(files, key=rank)[0]
+        with Image.open(choice) as img:
+            img.load()
+            return img.convert('RGBA')
+
+
+def material_image(doc, buffers, index, gltf_path):
+    from PIL import Image
+    raw = image_bytes(doc, buffers, index, gltf_path.parent)
+    image_desc = doc.get('images', [])[index]
+    if image_desc.get('mimeType') == 'image/ktx2' or raw.startswith(b'\xabKTX 20\xbb\r\n\x1a\n'):
+        return decode_ktx2(raw)
+    with Image.open(BytesIO(raw)) as image:
+        image.load()
+        return image.convert('RGBA')
+
+
 def build_atlas(doc, buffers, gltf_path, atlas_out, max_size=4096, tile_limit=256):
     """Pack glTF baseColor textures into one image with padded tiles.
 
@@ -189,7 +248,7 @@ def build_atlas(doc, buffers, gltf_path, atlas_out, max_size=4096, tile_limit=25
             info = mats[mid].get('pbrMetallicRoughness', {}).get('baseColorTexture', {})
             texture_index = info.get('index')
             if texture_index is not None and texture_index < len(doc.get('textures', [])):
-                source = doc['textures'][texture_index].get('source')
+                source = texture_image_index(doc, texture_index)
                 if source is not None: used.add(source)
     # A 4096 atlas with 256px tiles fits 256 baseColor textures including white.
     # For larger scenes reduce the individual image footprint instead of dropping
@@ -216,10 +275,7 @@ def build_atlas(doc, buffers, gltf_path, atlas_out, max_size=4096, tile_limit=25
             tex = Image.new('RGBA', (size, size), (255,255,255,255))
         else:
             try:
-                raw = image_bytes(doc, buffers, image_id, gltf_path.parent)
-                with Image.open(BytesIO(raw)) as src:
-                    src.load()
-                    tex = src.convert('RGBA')
+                tex = material_image(doc, buffers, image_id, gltf_path)
                 tex.thumbnail((size, size), Image.Resampling.LANCZOS)
                 if tex.size != (size, size):
                     # Keep source aspect ratio, avoiding unpredictable UV space.
@@ -252,7 +308,8 @@ def primitive_material(doc, prim):
         texinfo = pbr.get('baseColorTexture', {})
         if 'index' in texinfo:
             texture = doc.get('textures', [])[texinfo['index']]
-            tex_source = texture.get('source', -1)
+            tex_source = texture_image_index(doc, texinfo['index'])
+            if tex_source is None: tex_source = -1
             texcoord = texinfo.get('texCoord', 0)
             ext = texinfo.get('extensions', {}).get('KHR_texture_transform', {})
             texcoord = ext.get('texCoord', texcoord)
@@ -270,13 +327,17 @@ def align_weapon(p, direction):
     return p
 
 
-def convert(source, output, scale, limit, center=True, texture_atlas=None, weapon_length=None, max_source_coordinate=None, instances_out=None):
+def convert(source, output, scale, limit, center=True, texture_atlas=None, weapon_length=None, max_source_coordinate=None, instances_out=None, minimum_decoded_textures=0):
     doc, buffers = load_gltf(source)
     textured = texture_atlas is not None
     rects = {-1:(0.,0.,1.,1.)}
     atlas_errors = []
     if textured:
         rects, atlas_errors = build_atlas(doc,buffers,source,texture_atlas)
+        attempted = len(rects) - 1
+        decoded = attempted - len(atlas_errors)
+        if decoded < minimum_decoded_textures:
+            raise ValueError(f'Too few albedo textures decoded: {decoded}/{attempted}, minimum {minimum_decoded_textures}; errors: {atlas_errors[:3]}')
     if max_source_coordinate is not None and max_source_coordinate <= 0:
         raise ValueError('max_source_coordinate must be positive')
     raw_triangles = []
@@ -469,7 +530,8 @@ def main():
     p.add_argument('--weapon-length',type=float,help='Normalize model largest axis to meters and orient its longest axis as Z')
     p.add_argument('--max-source-coordinate',type=float,help='Exclude remote environment/sky triangles outside +/- this many source units')
     p.add_argument('--instances-out',type=Path,help='Write GPU-instanced scenery as MERKINS1; excludes prototype copies from main map')
+    p.add_argument('--minimum-decoded-textures',type=int,default=0,help='Fail build if fewer albedo textures decode than this count')
     args=p.parse_args()
-    convert(args.glb,args.out,args.scale,args.max_triangles,not args.keep_origin,args.texture_atlas,args.weapon_length,args.max_source_coordinate,args.instances_out)
+    convert(args.glb,args.out,args.scale,args.max_triangles,not args.keep_origin,args.texture_atlas,args.weapon_length,args.max_source_coordinate,args.instances_out,args.minimum_decoded_textures)
 
 if __name__ == '__main__':main()

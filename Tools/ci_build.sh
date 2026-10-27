@@ -16,13 +16,19 @@ mkdir -p output build/logs
 python3 -m unittest discover -s Tests -v 2>&1 | tee build/logs/python-tests.log
 
 if [ "$MODE" = full ]; then
+  # The deployed map and guns store albedo as KHR_texture_basisu/KTX2;
+  # Pillow cannot decode them without the Basis Universal transcoder.
+  if ! command -v basisu >/dev/null 2>&1; then
+    brew install basis_universal
+  fi
   python3 Tools/download_level.py --out build/recovered-map
   mkdir -p MerkOfDuty/Resources
   python3 Tools/convert_gltf.py build/recovered-map/nuketown_2020_optimized.glb \
     --out MerkOfDuty/Resources/MerkMap.meshbin \
     --texture-atlas MerkOfDuty/Resources/MerkAtlas.png \
     --scale 0.01 --max-triangles 1000000 --max-source-coordinate 50000 \
-    --instances-out MerkOfDuty/Resources/MerkInstances.bin
+    --instances-out MerkOfDuty/Resources/MerkInstances.bin \
+    --minimum-decoded-textures 1
   python3 Tools/bake_collision.py MerkOfDuty/Resources/MerkMap.meshbin \
     --out MerkOfDuty/Resources/MerkCollision.bin --cell-size 0.75 --playable-radius 160
   python3 Tools/download_weapons.py --out build/recovered-weapons
@@ -36,7 +42,8 @@ if [ "$MODE" = full ]; then
     python3 Tools/convert_gltf.py "build/recovered-weapons/viewmodel/${model}.glb" \
       --out "MerkOfDuty/Resources/MerkWeapon${key}.meshbin" \
       --texture-atlas "MerkOfDuty/Resources/MerkWeapon${key}Atlas.png" \
-      --weapon-length 1.05 --max-triangles 250000
+      --weapon-length 1.05 --max-triangles 250000 \
+      --minimum-decoded-textures 1
   done
 fi
 

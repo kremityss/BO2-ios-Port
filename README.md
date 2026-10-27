@@ -201,3 +201,19 @@ to weapon assets. Imported terrain collisions are still approximate.
 - The loaded map still lacks complete gameplay parity (native multiplayer,
   Zombies, original skeletal animation, audio, and advanced navigation).
   Do not treat a compiled IPA as a fully tested game.
+
+## v0.5.1 — Actual Basis Universal textures
+
+The last native build compiled, but the published 2026-09-22 Nuketown GLB
+uses `KHR_texture_basisu` for **all 481 albedo images**. The original
+Pillow-only importer inadvertently created a blank atlas. v0.5.1 resolves
+texture sources from the extension and transcodes embedded KTX2 images with
+`basisu` at build time. `ci_build.sh full` installs `basis_universal` using
+Homebrew on the macOS runner. Only ordinary PNG atlas textures are packaged
+for iOS; no runtime codec or JIT is required. The converter now rejects a
+full-asset build if it cannot decode at least one real material image for the
+map or each weapon. This guards against falsely claiming a textured game.
+
+Texture decoding, original on-device appearance, materials, and FPS still
+require validation against the real map. The game remains an unfinished
+native reconstruction, not a complete multiplayer/Zombies port.
