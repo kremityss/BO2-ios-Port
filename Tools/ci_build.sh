@@ -21,7 +21,8 @@ if [ "$MODE" = full ]; then
   python3 Tools/convert_gltf.py build/recovered-map/nuketown_2020_optimized.glb \
     --out MerkOfDuty/Resources/MerkMap.meshbin \
     --texture-atlas MerkOfDuty/Resources/MerkAtlas.png \
-    --scale 0.01 --max-triangles 1000000 --max-source-coordinate 50000
+    --scale 0.01 --max-triangles 1000000 --max-source-coordinate 50000 \
+    --instances-out MerkOfDuty/Resources/MerkInstances.bin
   python3 Tools/bake_collision.py MerkOfDuty/Resources/MerkMap.meshbin \
     --out MerkOfDuty/Resources/MerkCollision.bin --cell-size 0.75 --playable-radius 160
   python3 Tools/download_weapons.py --out build/recovered-weapons

@@ -13,12 +13,14 @@ final class GameRenderer: NSObject, MTKViewDelegate {
     let mapBuffer: MTLBuffer?
     let atlasTexture: MTLTexture
     let mapVertexCount: Int
+    let instancedScenery: [(mesh: MTLBuffer, count: Int, transforms: MTLBuffer, instances: Int)]
     let weaponBuffers: [MTLBuffer?]
     let weaponVertexCounts: [Int]
     let weaponTextures: [MTLTexture]
     var onHUD: ((String) -> Void)?
     private var previousTime = CACurrentMediaTime()
     private var hudAccum: Double = 0
+    private var smoothedFPS: Double = 60
     private var frameIndex = 0
     private var storedWidth = 1
     private var storedHeight = 1
@@ -71,6 +73,18 @@ final class GameRenderer: NSObject, MTKViewDelegate {
             mapBuffer = nil
             mapVertexCount = 0
         }
+        var scenery: [(mesh: MTLBuffer, count: Int, transforms: MTLBuffer, instances: Int)] = []
+        if world.hasImportedLevel {
+            for group in NativeInstancedMap.load() {
+                guard let mesh = d.makeBuffer(bytes: group.vertices,
+                       length: group.vertices.count * MemoryLayout<GPUVertex>.stride, options: .storageModeShared),
+                      let instance = d.makeBuffer(bytes: group.instances,
+                       length: group.instances.count * MemoryLayout<GPUInstance>.stride, options: .storageModeShared) else { continue }
+                scenery.append((mesh: mesh, count: group.vertices.count,
+                                transforms: instance, instances: group.instances.count))
+            }
+        }
+        instancedScenery = scenery
         let weaponNames = ["M27", "AN94", "DSR50", "FiveSeven"]
         var loadedBuffers: [MTLBuffer?] = []
         var loadedCounts: [Int] = []
@@ -117,7 +131,9 @@ final class GameRenderer: NSObject, MTKViewDelegate {
 
     func draw(in view: MTKView) {
         let now = CACurrentMediaTime()
-        let dt = min(0.033, Float(now - previousTime))
+        let frameDuration = max(0.001, now - previousTime)
+        let dt = min(0.033, Float(frameDuration))
+        smoothedFPS = smoothedFPS * 0.85 + min(120, 1.0 / frameDuration) * 0.15
         previousTime = now
         world.update(dt)
         hudAccum += Double(dt)
@@ -125,7 +141,7 @@ final class GameRenderer: NSObject, MTKViewDelegate {
             hudAccum = 0
             let w = world
             let status = w.health <= 0 ? "RESPAWNING" : (w.reloading ? "RELOADING" : "")
-            onHUD?("\(w.weapon.name)     \(w.ammo)/\(w.reserveAmmo)   •   \(Int(w.health)) HP\nK \(w.kills)  D \(w.deaths)     \(status)")
+            onHUD?("\(w.weapon.name) \(w.ammo)/\(w.reserveAmmo)  \(Int(w.health))HP  \(Int(smoothedFPS))FPS\nK\(w.kills) D\(w.deaths)  \(status)")
         }
         guard let renderPass = view.currentRenderPassDescriptor,
               let drawable = view.currentDrawable,
@@ -148,6 +164,14 @@ final class GameRenderer: NSObject, MTKViewDelegate {
             encoder.setVertexBuffer(map, offset: 0, index: 0)
             encoder.setVertexBytes(&identity, length: MemoryLayout<GPUInstance>.stride, index: 2)
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: mapVertexCount)
+        }
+        // Repeated props and vegetation are drawn with native GPU instancing.
+        // Prototypes are absent from the main scene mesh, avoiding stray copies.
+        for group in instancedScenery {
+            encoder.setVertexBuffer(group.mesh, offset: 0, index: 0)
+            encoder.setVertexBuffer(group.transforms, offset: 0, index: 2)
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0,
+                                   vertexCount: group.count, instanceCount: group.instances)
         }
         let importedGun = weaponBuffers.indices.contains(world.weaponIndex)
                           && weaponBuffers[world.weaponIndex] != nil

@@ -138,16 +138,21 @@ def accessor_values(doc, buffers, index):
     return result
 
 
-def iter_meshes(doc):
+def iter_mesh_nodes(doc):
     nodes=doc.get('nodes',[])
     scenes=doc.get('scenes',[])
     roots=scenes[doc.get('scene',0)].get('nodes',[]) if scenes else list(range(len(nodes)))
     def walk(idx,m):
         node=nodes[idx]
         model=matmul(m,local_matrix(node))
-        if 'mesh' in node: yield (doc['meshes'][node['mesh']],model)
+        if 'mesh' in node: yield (doc['meshes'][node['mesh']],model,node)
         for child in node.get('children',[]): yield from walk(child,model)
     for idx in roots: yield from walk(idx,identity())
+
+
+def iter_meshes(doc):
+    for mesh, model, node in iter_mesh_nodes(doc):
+        yield mesh, model
 
 
 def image_bytes(doc, buffers, source, base_dir):
@@ -265,7 +270,7 @@ def align_weapon(p, direction):
     return p
 
 
-def convert(source, output, scale, limit, center=True, texture_atlas=None, weapon_length=None, max_source_coordinate=None):
+def convert(source, output, scale, limit, center=True, texture_atlas=None, weapon_length=None, max_source_coordinate=None, instances_out=None):
     doc, buffers = load_gltf(source)
     textured = texture_atlas is not None
     rects = {-1:(0.,0.,1.,1.)}
@@ -292,7 +297,9 @@ def convert(source, output, scale, limit, center=True, texture_atlas=None, weapo
         weapon_axis = 'xyz'[spans.index(max(spans))]
         scale = weapon_length / max(spans)
 
-    for mesh, matrix in iter_meshes(doc):
+    for mesh, matrix, node in iter_mesh_nodes(doc):
+        if instances_out is not None and node.get('extensions', {}).get('EXT_mesh_gpu_instancing'):
+            continue
         for prim in mesh['primitives']:
             if prim.get('mode',4) != 4 or 'POSITION' not in prim.get('attributes', {}):
                 unsupported += 1
@@ -350,13 +357,106 @@ def convert(source, output, scale, limit, center=True, texture_atlas=None, weapo
                     file.write(struct.pack('<16f',*point,*normal,*color,*uv[vi],*rect))
                 else:
                     file.write(struct.pack('<10f',*point,*normal,*color))
+    instancing_stats = None
+    if instances_out is not None:
+        if not textured:
+            raise ValueError('Instanced scenery requires a texture atlas')
+        instancing_stats = write_instanced_scenery(doc, buffers, instances_out, rects, scale, offset, max_source_coordinate)
     print(json.dumps({'source':str(source),'out':str(output),'triangles':len(raw_triangles),
                       'unhandled_primitives':unsupported,'source_bounds':[minp,maxp],
                       'output_bytes':output.stat().st_size,'scale':scale,
                       'weapon_alignment_axis':weapon_axis,'textured':textured,'atlas':str(texture_atlas) if textured else None,
                       'missing_textures':atlas_errors[:30],'missing_texture_count':len(atlas_errors),
                       'excluded_outlier_triangles':excluded_outlier_triangles,
-                      'max_source_coordinate':max_source_coordinate},indent=2))
+                      'max_source_coordinate':max_source_coordinate, 'instancing':instancing_stats},indent=2))
+
+
+def write_instanced_scenery(doc, buffers, output, rects, scale, offset, coordinate_limit=None):
+    """Export EXT_mesh_gpu_instancing without replicating all mesh triangles.
+
+    MERKINS1: 8-byte magic, uint32 group count; repeated groups of
+    uint32 vertexCount, uint32 instanceCount; 64-byte MERKMAP2 vertices;
+    64-byte column-major model matrix + 16-byte tint per placement.
+    For the packed vertex, geometry is local coordinates * scene scale;
+    per-instance matrix supplies node and instance transforms and rebases the
+    scene so it matches the main map's center offset.
+    """
+    output.parent.mkdir(parents=True, exist_ok=True)
+    groups = 0
+    placed = 0
+    triangles = 0
+    skipped = 0
+    with output.open('wb') as out:
+        out.write(b'MERKINS1' + struct.pack('<I', 0))
+        for mesh, model, node in iter_mesh_nodes(doc):
+            attributes = node.get('extensions', {}).get('EXT_mesh_gpu_instancing', {}).get('attributes')
+            if not attributes:
+                continue
+            arrays = {k: accessor_values(doc, buffers, ix) for k, ix in attributes.items()}
+            count = len(next(iter(arrays.values())))
+            if not all(len(a) == count for a in arrays.values()):
+                raise ValueError('Inconsistent EXT_mesh_gpu_instancing accessor counts')
+            transforms = []
+            for i in range(count):
+                translation = arrays.get('TRANSLATION', [])
+                rotation = arrays.get('ROTATION', [])
+                sizes = arrays.get('SCALE', [])
+                inst = local_matrix({
+                    'translation': translation[i] if translation else [0,0,0],
+                    'rotation': rotation[i] if rotation else [0,0,0,1],
+                    'scale': sizes[i] if sizes else [1,1,1],
+                })
+                matrix = matmul(model, inst)
+                if coordinate_limit is not None and any(abs(matrix[12+k]) > coordinate_limit for k in range(3)):
+                    skipped += 1
+                    continue
+                # Vertices were scaled but not centered: the matrix translation
+                # must use the same world offset as the base mesh converter.
+                for k in range(3):
+                    matrix[12+k] = (matrix[12+k] - offset[k]) * scale
+                transforms.append(matrix)
+            if not transforms:
+                continue
+            vertices = bytearray()
+            for prim in mesh.get('primitives', []):
+                if prim.get('mode', 4) != 4 or 'POSITION' not in prim.get('attributes', {}):
+                    continue
+                attrs = prim['attributes']
+                positions = accessor_values(doc, buffers, attrs['POSITION'])
+                indices = [v[0] for v in accessor_values(doc,buffers,prim['indices'])] if 'indices' in prim else list(range(len(positions)))
+                color, tex_source, tc, texoffset, texscale, angle = primitive_material(doc, prim)
+                uv_ix = attrs.get(f'TEXCOORD_{tc}')
+                uvs = accessor_values(doc, buffers, uv_ix) if uv_ix is not None else None
+                if uvs is None: tex_source = -1
+                rect = rects.get(tex_source, rects[-1])
+                for start in range(0, len(indices)-2, 3):
+                    ia,ib,ic = indices[start:start+3]
+                    points = [positions[index][:3] for index in (ia,ib,ic)]
+                    a,b,c = points
+                    normal = normalize(cross([b[k]-a[k] for k in range(3)], [c[k]-a[k] for k in range(3)]))
+                    for ix, point in zip((ia,ib,ic), points):
+                        ux,uy = uvs[ix][:2] if uvs is not None else (0.0, 0.0)
+                        x,y = ux*texscale[0], uy*texscale[1]
+                        u = math.cos(angle)*x-math.sin(angle)*y+texoffset[0]
+                        v = math.sin(angle)*x+math.cos(angle)*y+texoffset[1]
+                        vertices.extend(struct.pack('<16f', *(w*scale for w in point), *normal,*color,u,v,*rect))
+            count_vertices = len(vertices)//64
+            if count_vertices == 0:
+                continue
+            if count_vertices > 3_000_000 or len(transforms) > 100_000:
+                raise ValueError('Instanced scenery exceeds safe group size')
+            out.write(struct.pack('<II', count_vertices, len(transforms)))
+            out.write(vertices)
+            for matrix in transforms:
+                out.write(struct.pack('<20f', *matrix, 1,1,1,1))
+            groups += 1
+            placed += len(transforms)
+            triangles += count_vertices//3
+        out.seek(8)
+        out.write(struct.pack('<I', groups))
+    return {'groups':groups, 'placements':placed, 'unique_triangles':triangles,
+            'skipped_placements':skipped, 'output_bytes':output.stat().st_size,
+            'path':str(output)}
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
@@ -368,7 +468,8 @@ def main():
     p.add_argument('--texture-atlas',type=Path,help='Write PNG atlas and MERKMAP2 UV vertices (requires Pillow)')
     p.add_argument('--weapon-length',type=float,help='Normalize model largest axis to meters and orient its longest axis as Z')
     p.add_argument('--max-source-coordinate',type=float,help='Exclude remote environment/sky triangles outside +/- this many source units')
+    p.add_argument('--instances-out',type=Path,help='Write GPU-instanced scenery as MERKINS1; excludes prototype copies from main map')
     args=p.parse_args()
-    convert(args.glb,args.out,args.scale,args.max_triangles,not args.keep_origin,args.texture_atlas,args.weapon_length,args.max_source_coordinate)
+    convert(args.glb,args.out,args.scale,args.max_triangles,not args.keep_origin,args.texture_atlas,args.weapon_length,args.max_source_coordinate,args.instances_out)
 
 if __name__ == '__main__':main()

@@ -157,7 +157,9 @@ final class FPSViewController: UIViewController {
         reticle.textAlignment = .center
         reticle.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(reticle)
-        info.text = "MERK OF DUTY  /  NATIVE METAL  /  TRAINING"
+        info.text = renderer.world.hasImportedLevel
+            ? "NUKETOWN / METAL / SCENERY \(renderer.instancedScenery.count) GROUPS"
+            : "TRAINING ARENA / NATIVE METAL"
         info.textColor = UIColor.white.withAlphaComponent(0.75)
         info.font = UIFont.monospacedSystemFont(ofSize: 10, weight: .medium)
         info.translatesAutoresizingMaskIntoConstraints = false
