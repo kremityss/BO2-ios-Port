@@ -1,0 +1,75 @@
+name: Merk of Duty - Native iOS IPA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'MerkOfDuty/**'
+      - 'Tools/**'
+      - 'Tests/**'
+      - 'project.yml'
+      - '.github/workflows/build-unsigned-ipa.yml'
+  workflow_dispatch:
+    inputs:
+      full_assets:
+        description: 'Also attempt Nuketown + 4 weapon models (slower and may fail)'
+        type: boolean
+        default: false
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  offline-ipa:
+    name: Compile native offline IPA
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Pillow for texture-tool tests
+        run: python3 -m pip install 'Pillow>=11,<13'
+      - name: Build native unsigned IPA (no external asset dependency)
+        run: bash Tools/ci_build.sh offline
+      - name: Upload unsigned iOS package and build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MerkOfDutyNative-offline-unsigned
+          path: |
+            output/*.ipa
+            build/logs/*.log
+            build/logs/sha256.txt
+          if-no-files-found: warn
+          retention-days: 7
+
+  full-assets-ipa:
+    if: github.event_name == 'workflow_dispatch' && inputs.full_assets
+    needs: offline-ipa
+    name: Compile Nuketown + weapons IPA
+    runs-on: macos-15
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Pillow for GLB texture atlas converter
+        run: python3 -m pip install 'Pillow>=11,<13'
+      - name: Build full native IPA from pinned Cloudflare deployment
+        run: bash Tools/ci_build.sh full
+      - name: Upload full IPA, conversion data and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MerkOfDutyNative-full-unsigned
+          path: |
+            output/*.ipa
+            build/logs/*.log
+            build/logs/sha256.txt
+            build/recovered-map/recovery-report.json
+          if-no-files-found: warn
+          retention-days: 7

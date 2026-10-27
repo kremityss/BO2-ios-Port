@@ -1,0 +1,10 @@
+.DS_Store
+.swiftpm/
+**/__pycache__/
+*.pyc
+build/
+output/
+.work/
+MerkOfDutyNative.xcodeproj/
+MerkOfDuty/Resources/*.meshbin
+MerkOfDuty/Resources/*.png

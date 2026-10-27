@@ -1,0 +1,40 @@
+workflows:
+  native-ios-unsigned:
+    name: Merk of Duty - offline iOS unsigned IPA
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      xcode: latest
+    scripts:
+      - name: Install Python texture dependencies
+        script: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install 'Pillow>=11,<13'
+      - name: Compile Swift and Metal, package unsigned IPA
+        script: |
+          export PATH="$CM_BUILD_DIR/.venv/bin:$PATH"
+          bash Tools/ci_build.sh offline
+    artifacts:
+      - output/*.ipa
+      - build/logs/*.log
+      - build/logs/sha256.txt
+  native-ios-nuketown:
+    name: Merk of Duty - full assets unsigned IPA
+    instance_type: mac_mini_m2
+    max_build_duration: 120
+    environment:
+      xcode: latest
+    scripts:
+      - name: Install Python texture dependencies
+        script: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install 'Pillow>=11,<13'
+      - name: Download map and weapons and build native IPA
+        script: |
+          export PATH="$CM_BUILD_DIR/.venv/bin:$PATH"
+          bash Tools/ci_build.sh full
+    artifacts:
+      - output/*.ipa
+      - build/logs/*.log
+      - build/logs/sha256.txt
+      - build/recovered-map/recovery-report.json
