@@ -32,8 +32,12 @@ def validate(root):
             raise ValueError(f'{display}: damaged collision grid')
         floors=[struct.unpack_from('<h',raw,24+6*i)[0] for i in range(w*h)]
         walkable=sum(1 for y in floors if y!=-32768)
-        if walkable<3000:
-            raise ValueError(f'{display}: insufficient walkable floor: {walkable}')
+        # Hijacked's playable surface is a narrow ship deck rather than a
+        # wide outdoor map; fewer occupied grid cells are expected. The
+        # independent mesh, texture, collision and spawn checks still apply.
+        minimum_walkable = 1000 if expected_id == 'mp_hijacked' else 3000
+        if walkable < minimum_walkable:
+            raise ValueError(f'{display}: insufficient walkable floor: {walkable} (minimum {minimum_walkable})')
         hints=json.loads(spawns.read_text())
         if hints.get('map')!=expected_id or len(hints.get('spawns',[]))<30:
             raise ValueError(f'{display}: wrong map spawn registry')
