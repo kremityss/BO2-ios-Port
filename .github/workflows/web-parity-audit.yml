@@ -1,0 +1,25 @@
+name: Audit deployed web gameplay for native parity
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Tools/audit_web_reference.py'
+      - '.github/workflows/web-parity-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download deployed gameplay definitions
+        run: python3 Tools/audit_web_reference.py
+      - name: Upload read-only deployed source audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BO2-web-reference-audit
+          path: build/web-reference/
+          retention-days: 5
