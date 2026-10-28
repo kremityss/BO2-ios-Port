@@ -75,6 +75,8 @@ final class GameWorld {
     private(set) var motionPhase: Float = 0
     private var cooldown: Float = 0
     private var triggerLatched = false
+    private var triggerShotCount = 0
+    private var spreadBloom: Float = 0
     private var verticalVelocity: Float = 0
     private var horizontalVelocity = SIMD2<Float>(repeating: 0)
     private var slideRemaining: Float = 0
@@ -167,12 +169,17 @@ final class GameWorld {
         reloadRemaining = 0
         cooldown = 0
         triggerLatched = false
+        triggerShotCount = 0
+        spreadBloom = 0
     }
 
     func update(_ rawDelta: Float) {
         let dt = max(0, min(0.033, rawDelta))
         guard dt > 0 else { return }
         cooldown = max(0, cooldown - dt)
+        if let authored = WebWeaponRegistry.shared.ballistics(for: weaponIndex) {
+            spreadBloom = max(0, spreadBloom - authored.hipSpread.decayRate * dt)
+        }
         muzzleFlash = max(0, muzzleFlash - dt)
         recentHit = max(0, recentHit - dt)
         protectionRemaining = max(0, protectionRemaining - dt)
@@ -261,7 +268,7 @@ final class GameWorld {
         }
         pos = proposed
         if simd_length(horizontalVelocity) > 0.3 && isGrounded { motionPhase += dt * (fast ? 15 : 10) } else { motionPhase *= 0.90 }
-        if controls.firing { attemptFire() } else { triggerLatched = false }
+        if controls.firing { attemptFire() } else { triggerLatched = false; triggerShotCount = 0 }
         updateBots(dt)
         clearQueued()
     }
@@ -315,11 +322,28 @@ final class GameWorld {
         ammo -= 1
         shots += 1
         muzzleFlash = 0.09
-        cooldown = weapon.mode == .bolt ? 1.15 : 60 / weapon.rpm
-        let spread = weapon.spread * (controls.ads ? 0.36 : 1) * (isSliding ? 2 : 1)
+        triggerShotCount += 1
+        // AN-94's initial 937.5 RPM two-round introduction comes from
+        // weapons.js; subsequent automatic fire returns to 625 RPM.
+        let rpm: Float = weaponIndex == 1 && triggerShotCount < 2 ? 937.5 : weapon.rpm
+        cooldown = weapon.mode == .bolt ? 1.15 : 60 / rpm
+        let authored = WebWeaponRegistry.shared.ballistics(for: weaponIndex)
+        let speedFraction = simd_length(horizontalVelocity) / max(0.1,physics.walkSpeed)
+        let degrees = authored?.spreadDegrees(moving:speedFraction,
+                            crouched:controls.crouch || isSliding,
+                            ads:controls.ads,bloom:spreadBloom)
+                            ?? weapon.spread * (controls.ads ? 0.36 : 1) * 57.29578
+        // The web gunplay SpreadModel samples uniformly over a *disc*, not
+        // uniformly over its radius.
+        let coneRadius = degrees * Float.pi / 180 * sqrt(rand())
+        let angle = rand() * Float.pi * 2
         let origin = cameraPosition
-        let shotDir = normalize(forward + right * ((rand() - 0.5) * spread) +
-                    SIMD3<Float>(0, (rand() - 0.5) * spread, 0))
+        let shotDir = normalize(forward + right * (cos(angle)*coneRadius) +
+                    SIMD3<Float>(0, sin(angle)*coneRadius, 0))
+        if let authored {
+            spreadBloom = min(authored.hipSpread.max-authored.hipSpread.standMin,
+                              spreadBloom + authored.hipSpread.fireAdd)
+        }
         var nearest: Float = 120
         var index: Int? = nil
         for i in bots.indices where bots[i].alive {
@@ -339,10 +363,19 @@ final class GameWorld {
             hits += 1
             recentHit = 0.22
             let headshot = simd_length(origin + shotDir * nearest - (bots[i].position + SIMD3<Float>(0, 0.65, 0))) < 0.16
-            bots[i].health -= weapon.damage * (headshot ? 1.6 : 1)
+            let damage = authored?.damageAt(distanceMetres:nearest,headshot:headshot)
+                         ?? weapon.damage * (headshot ? 1.6 : 1)
+            bots[i].health -= damage
             if bots[i].health <= 0 { kills += 1; bots[i].respawnTimer = 3.2 }
         }
-        pitch = min(1.3, pitch + (weaponIndex == 2 ? 0.024 : 0.0075))
+        if let authored {
+            // Browser gunplay VIEW_KICK_RADIANS = 0.00013 per authored kick unit.
+            let kick = controls.ads ? authored.adsKick : authored.hipKick
+            let appliedPitch = kick.pitchMin + (kick.pitchMax-kick.pitchMin)*rand()
+            let appliedYaw = kick.yawMin + (kick.yawMax-kick.yawMin)*rand()
+            pitch = min(1.3, pitch + appliedPitch * 0.00013)
+            yaw += appliedYaw * 0.00013
+        } else { pitch = min(1.3, pitch + (weaponIndex == 2 ? 0.024 : 0.0075)) }
     }
 
     private func rayBlockDistance(_ origin: SIMD3<Float>, _ dir: SIMD3<Float>, _ block: ArenaBlock) -> Float {

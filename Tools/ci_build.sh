@@ -31,6 +31,7 @@ if [ "$MODE" = full ]; then
     --minimum-decoded-textures 1 \
     --transform-metadata build/recovered-map/native-transform.json
   python3 Tools/import_web_movement.py --out MerkOfDuty/Resources/MerkWebMovement.json
+  node Tools/import_web_weapons.mjs --out MerkOfDuty/Resources/MerkWebWeapons.json
   python3 Tools/import_web_spawns.py \
     --transform build/recovered-map/native-transform.json \
     --out MerkOfDuty/Resources/MerkWebSpawns.json

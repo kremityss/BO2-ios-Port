@@ -1,0 +1,1235 @@
+{
+  "version": 1,
+  "source": "web weapons.js + weapon-ballistics.js",
+  "defaultLoadout": {
+    "primary": "m27",
+    "secondary": "fiveseven",
+    "lethal": "frag",
+    "tactical": "smoke"
+  },
+  "weapons": {
+    "m27": {
+      "id": "m27",
+      "name": "M27",
+      "class": "primary",
+      "role": "Assault rifle",
+      "magazineSize": 30,
+      "reserveAmmo": 240,
+      "roundsPerMinute": 750,
+      "initialRoundsPerMinute": null,
+      "initialShotCount": 0,
+      "fireMode": "auto",
+      "burstCount": 0,
+      "damage": 33,
+      "ballistics": {
+        "adsKick": {
+          "centerSpeed": 1550,
+          "minMagnitude": 25,
+          "pitchMax": 50,
+          "pitchMin": -35,
+          "yawMax": 35,
+          "yawMin": -35
+        },
+        "adsSpread": 0,
+        "adsTransInTime": 0.25,
+        "adsTransOutTime": 0.25,
+        "adsZoomFov": 50,
+        "damage": 33,
+        "hipKick": {
+          "centerSpeed": 1550,
+          "minMagnitude": 0,
+          "pitchMax": 50,
+          "pitchMin": -35,
+          "yawMax": 35,
+          "yawMin": -35
+        },
+        "hipSpread": {
+          "decayRate": 4,
+          "duckedMax": 5.75,
+          "duckedMin": 2.5,
+          "fireAdd": 0.6,
+          "max": 6.75,
+          "moveAdd": 5,
+          "standMin": 3
+        },
+        "locations": {
+          "head": 1.1,
+          "legs": 1,
+          "none": 1,
+          "torso": 1,
+          "torsoLower": 1
+        },
+        "maxDamageRange": 500,
+        "moveSpeedScale": 0.95,
+        "penetrateType": "medium",
+        "ranges": [
+          {
+            "damage": 30,
+            "range": 501
+          },
+          {
+            "damage": 30,
+            "range": 1300
+          },
+          {
+            "damage": 22,
+            "range": 1301
+          }
+        ],
+        "sprintOutTime": 0.2
+      }
+    },
+    "an94": {
+      "id": "an94",
+      "name": "AN-94",
+      "class": "primary",
+      "role": "Assault rifle",
+      "magazineSize": 30,
+      "reserveAmmo": 240,
+      "roundsPerMinute": 625,
+      "initialRoundsPerMinute": 937.5,
+      "initialShotCount": 2,
+      "fireMode": "auto",
+      "burstCount": 0,
+      "damage": 40,
+      "ballistics": {
+        "adsKick": {
+          "centerSpeed": 1500,
+          "minMagnitude": 20,
+          "pitchMax": 47.5,
+          "pitchMin": 30,
+          "yawMax": 50,
+          "yawMin": -50
+        },
+        "adsSpread": 0,
+        "adsTransInTime": 0.25,
+        "adsTransOutTime": 0.25,
+        "adsZoomFov": 50,
+        "damage": 40,
+        "hipKick": {
+          "centerSpeed": 1500,
+          "minMagnitude": 0,
+          "pitchMax": 47.5,
+          "pitchMin": 30,
+          "yawMax": 50,
+          "yawMin": -50
+        },
+        "hipSpread": {
+          "decayRate": 4,
+          "duckedMax": 5.75,
+          "duckedMin": 2.5,
+          "fireAdd": 0.6,
+          "max": 6.75,
+          "moveAdd": 5,
+          "standMin": 3
+        },
+        "locations": {
+          "head": 1.2,
+          "legs": 1,
+          "none": 1,
+          "torso": 1,
+          "torsoLower": 1
+        },
+        "maxDamageRange": 1300,
+        "moveSpeedScale": 0.95,
+        "penetrateType": "medium",
+        "ranges": [
+          {
+            "damage": 33,
+            "range": 1301
+          },
+          {
+            "damage": 33,
+            "range": 2250
+          },
+          {
+            "damage": 24,
+            "range": 2251
+          }
+        ],
+        "sprintOutTime": 0.2
+      }
+    },
+    "sa58": {
+      "id": "sa58",
+      "name": "FAL OSW",
+      "class": "primary",
+      "role": "Assault rifle",
+      "magazineSize": 25,
+      "reserveAmmo": 240,
+      "roundsPerMinute": 625,
+      "initialRoundsPerMinute": null,
+      "initialShotCount": 0,
+      "fireMode": "single",
+      "burstCount": 0,
+      "damage": 55,
+      "ballistics": {
+        "adsKick": {
+          "centerSpeed": 1550,
+          "minMagnitude": 31,
+          "pitchMax": 35,
+          "pitchMin": 30,
+          "yawMax": 35,
+          "yawMin": -35
+        },
+        "adsSpread": 0,
+        "adsTransInTime": 0.25,
+        "adsTransOutTime": 0.25,
+        "adsZoomFov": 50,
+        "damage": 55,
+        "hipKick": {
+          "centerSpeed": 1550,
+          "minMagnitude": 0,
+          "pitchMax": 35,
+          "pitchMin": 30,
+          "yawMax": 35,
+          "yawMin": -35
+        },
+        "hipSpread": {
+          "decayRate": 4,
+          "duckedMax": 5.75,
+          "duckedMin": 2.5,
+          "fireAdd": 0.6,
+          "max": 6.75,
+          "moveAdd": 5,
+          "standMin": 3
+        },
+        "locations": {
+          "head": 1.2,
+          "legs": 1,
+          "none": 0,
+          "torso": 1,
+          "torsoLower": 1
+        },
+        "maxDamageRange": 650,
+        "moveSpeedScale": 0.95,
+        "penetrateType": "large",
+        "ranges": [
+          {
+            "damage": 49,
+            "range": 651
+          },
+          {
+            "damage": 49,
+            "range": 2300
+          },
+          {
+            "damage": 40,
+            "range": 2301
+          }
+        ],
+        "sprintOutTime": 0.2
+      }
+    },
+    "saritch": {
+      "id": "saritch",
+      "name": "SMR",
+      "class": "primary",
+      "role": "Assault rifle",
+      "magazineSize": 20,
+      "reserveAmmo": 240,
+      "roundsPerMinute": 536,
+      "initialRoundsPerMinute": null,
+      "initialShotCount": 0,
+      "fireMode": "single",
+      "burstCount": 0,
+      "damage": 50,
+      "ballistics": {
+        "adsKick": {
+          "centerSpeed": 1250,
+          "minMagnitude": 30,
+          "pitchMax": 55,
+          "pitchMin": 30,
+          "yawMax": 25,
+          "yawMin": -50
+        },
+        "adsSpread": 0,
+        "adsTransInTime": 0.275,
+        "adsTransOutTime": 0.275,
+        "adsZoomFov": 50,
+        "damage": 50,
+        "hipKick": {
+          "centerSpeed": 1250,
+          "minMagnitude": 0,
+          "pitchMax": 55,
+          "pitchMin": 30,
+          "yawMax": 25,
+          "yawMin": -50
+        },
+        "hipSpread": {
+          "decayRate": 5,
+          "duckedMax": 6,
+          "duckedMin": 3,
+          "fireAdd": 1,
+          "max": 8,
+          "moveAdd": 5,
+          "standMin": 4
+        },
+        "locations": {
+          "head": 1.2,
+          "legs": 1,
+          "none": 1,
+          "torso": 1,
+          "torsoLower": 1
+        },
+        "maxDamageRange": 1000,
+        "moveSpeedScale": 0.95,
+        "penetrateType": "large",
+        "ranges": [
+          {
+            "damage": 50,
+            "range": 1001
+          },
+          {
+            "damage": 50,
+            "range": 1500
+          },
+          {
+            "damage": 49,
+            "range": 1501
+          },
+          {
+            "damage": 49,
+            "range": 3000
+          },
+          {
+            "damage": 40,
+            "range": 3001
+          }
+        ],
+        "sprintOutTime": 0.2
+      }
+    },
+    "scar": {
+      "id": "scar",
+      "name": "SCAR-H",
+      "class": "primary",
+      "role": "Assault rifle",
+      "magazineSize": 30,
+      "reserveAmmo": 240,
+      "roundsPerMinute": 625,
+      "initialRoundsPerMinute": null,
+      "initialShotCount": 0,
+      "fireMode": "auto",
+      "burstCount": 0,
+      "damage": 40,
+      "ballistics": {
+        "adsKick": {
+          "centerSpeed": 1500,
+          "minMagnitude": 20,
+          "pitchMax": 60,
+          "pitchMin": 15,
+          "yawMax": 25,
+          "yawMin": -57.5
+        },
+        "adsSpread": 0,
+        "adsTransInTime": 0.25,
+        "adsTransOutTime": 0.25,
+        "adsZoomFov": 50,
+        "damage": 40,
+        "hipKick": {
+          "centerSpeed": 1500,
+          "minMagnitude": 0,
+          "pitchMax": 60,
+          "pitchMin": 15,
+          "yawMax": 25,
+          "yawMin": -57.5
+        },
+        "hipSpread": {
+          "decayRate": 5,
+          "duckedMax": 5.75,
+          "duckedMin": 2.5,
+          "fireAdd": 0.6,
+          "max": 6.75,
+          "moveAdd": 5,
+          "standMin": 3
+        },
+        "locations": {
+          "head": 1.2,
+          "legs": 1,
+          "none": 0,
+          "torso": 1,
+          "torsoLower": 1
+        },
+        "maxDamageRange": 1500,
+        "moveSpeedScale": 0.95,
+        "penetrateType": "large",
+        "ranges": [
+          {
+            "damage": 33,
+            "range": 1501
+          },
+          {
+            "damage": 33,
+            "range": 3000
+          },
+          {
+            "damage": 24,
+            "range": 3001
+          }
+        ],
+        "sprintOutTime": 0.2
+      }
+    },
+    "sig556": {
+      "id": "sig556",
+      "name": "SWAT-556",
+      "class": "primary",
+      "role": "Assault rifle",
+      "magazineSize": 30,
+      "reserveAmmo": 240,
+      "roundsPerMinute": 938,
+      "initialRoundsPerMinute": null,
+      "initialShotCount": 0,
+      "fireMode": "burst",
+      "burstCount": 3,
+      "damage": 40,
+      "ballistics": {
+        "adsKick": {
+          "centerSpeed": 1600,
+          "minMagnitude": 27.5,
+          "pitchMax": 45,
+          "pitchMin": -20,
+          "yawMax": 35,
+          "yawMin": -35
+        },
+        "adsSpread": 0,
+        "adsTransInTime": 0.25,
+        "adsTransOutTime": 0.25,
+        "adsZoomFov": 50,
+        "damage": 40,
+        "hipKick": {
+          "centerSpeed": 1600,
+          "minMagnitude": 0,
+          "pitchMax": 45,
+          "pitchMin": -20,
+          "yawMax": 35,
+          "yawMin": -35
+        },
+        "hipSpread": {
+          "decayRate": 4,
+          "duckedMax": 5.75,
+          "duckedMin": 2.5,
+          "fireAdd": 0.6,
+          "max": 7,
+          "moveAdd": 5,
+          "standMin": 3.5
+        },
+        "locations": {
+          "head": 1.2,
+          "legs": 1,
+          "none": 1,
+          "torso": 1,
+          "torsoLower": 1
+        },
+        "maxDamageRange": 2000,
+        "moveSpeedScale": 0.95,
+        "penetrateType": "medium",
+        "ranges": [
+          {
+            "damage": 33,
+            "range": 2001
+          },
+          {
+            "damage": 33,
+            "range": 4000
+          },
+          {
+            "damage": 24,
+            "range": 4001
+          }
+        ],
+        "sprintOutTime": 0.2
+      }
+    },
+    "tar21": {
+      "id": "tar21",
+      "name": "MTAR",
+      "class": "primary",
+      "role": "Assault rifle",
+      "magazineSize": 30,
+      "reserveAmmo": 240,
+      "roundsPerMinute": 750,
+      "initialRoundsPerMinute": null,
+      "initialShotCount": 0,
+      "fireMode": "auto",
+      "burstCount": 0,
+      "damage": 40,
+      "ballistics": {
+        "adsKick": {
+          "centerSpeed": 1500,
+          "minMagnitude": 25,
+          "pitchMax": 55,
+          "pitchMin": -25,
+          "yawMax": 45,
+          "yawMin": -45
+        },
+        "adsSpread": 0,
+        "adsTransInTime": 0.25,
+        "adsTransOutTime": 0.25,
+        "adsZoomFov": 50,
+        "damage": 40,
+        "hipKick": {
+          "centerSpeed": 1500,
+          "minMagnitude": 0,
+          "pitchMax": 55,
+          "pitchMin": -25,
+          "yawMax": 45,
+          "yawMin": -45
+        },
+        "hipSpread": {
+          "decayRate": 4,
+          "duckedMax": 5.75,
+          "duckedMin": 2.5,
+          "fireAdd": 0.4,
+          "max": 6.75,
+          "moveAdd": 5,
+          "standMin": 3
+        },
+        "locations": {
+          "head": 1.2,
+          "legs": 1,
+          "none": 1,
+          "torso": 1,
+          "torsoLower": 1
+        },
+        "maxDamageRange": 550,
+        "moveSpeedScale": 0.95,
+        "penetrateType": "medium",
+        "ranges": [
+          {
+            "damage": 30,
+            "range": 551
+          },
+          {
+            "damage": 30,
+            "range": 1800
+          },
+          {
+            "damage": 24,
+            "range": 1801
+          }
+        ],
+        "sprintOutTime": 0.2
+      }
+    },
+    "type95": {
+      "id": "type95",
+      "name": "Type 25",
+      "class": "primary",
+      "role": "Assault rifle",
+      "magazineSize": 30,
+      "reserveAmmo": 240,
+      "roundsPerMinute": 938,
+      "initialRoundsPerMinute": null,
+      "initialShotCount": 0,
+      "fireMode": "auto",
+      "burstCount": 0,
+      "damage": 33,
+      "ballistics": {
+        "adsKick": {
+          "centerSpeed": 1700,
+          "minMagnitude": 15,
+          "pitchMax": 55,
+          "pitchMin": -25,
+          "yawMax": 10,
+          "yawMin": -50
+        },
+        "adsSpread": 0,
+        "adsTransInTime": 0.25,
+        "adsTransOutTime": 0.25,
+        "adsZoomFov": 50,
+        "damage": 33,
+        "hipKick": {
+          "centerSpeed": 1700,
+          "minMagnitude": 0,
+          "pitchMax": 55,
+          "pitchMin": -25,
+          "yawMax": 10,
+          "yawMin": -50
+        },
+        "hipSpread": {
+          "decayRate": 4,
+          "duckedMax": 5.75,
+          "duckedMin": 2.5,
+          "fireAdd": 0.4,
+          "max": 6.75,
+          "moveAdd": 5,
+          "standMin": 3
+        },
+        "locations": {
+          "head": 1.1,
+          "legs": 1,
+          "none": 1,
+          "torso": 1,
+          "torsoLower": 1
+        },
+        "maxDamageRange": 250,
+        "moveSpeedScale": 0.95,
+        "penetrateType": "medium",
+        "ranges": [
+          {
+            "damage": 30,
+            "range": 251
+          },
+          {
+            "damage": 30,
+            "range": 1300
+          },
+          {
+            "damage": 22,
+            "range": 1301
+          }
+        ],
+        "sprintOutTime": 0.2
+      }
+    },
+    "xm8": {
+      "id": "xm8",
+      "name": "M8A1",
+      "class": "primary",
+      "role": "Assault rifle",
+      "magazineSize": 36,
+      "reserveAmmo": 240,
+      "roundsPerMinute": 1250,
+      "initialRoundsPerMinute": null,
+      "initialShotCount": 0,
+      "fireMode": "burst",
+      "burstCount": 4,
+      "damage": 35,
+      "ballistics": {
+        "adsKick": {
+          "centerSpeed": 2500,
+          "minMagnitude": 35,
+          "pitchMax": 55,
+          "pitchMin": -45,
+          "yawMax": 25,
+          "yawMin": -25
+        },
+        "adsSpread": 0,
+        "adsTransInTime": 0.25,
+        "adsTransOutTime": 0.25,
+        "adsZoomFov": 50,
+        "damage": 35,
+        "hipKick": {
+          "centerSpeed": 2500,
+          "minMagnitude": 0,
+          "pitchMax": 55,
+          "pitchMin": -45,
+          "yawMax": 25,
+          "yawMin": -25
+        },
+        "hipSpread": {
+          "decayRate": 4,
+          "duckedMax": 5.75,
+          "duckedMin": 2.5,
+          "fireAdd": 0.6,
+          "max": 6.75,
+          "moveAdd": 5,
+          "standMin": 3
+        },
+        "locations": {
+          "head": 1,
+          "legs": 1,
+          "none": 1,
+          "torso": 1,
+          "torsoLower": 1
+        },
+        "maxDamageRange": 250,
+        "moveSpeedScale": 0.95,
+        "penetrateType": "large",
+        "ranges": [
+          {
+            "damage": 33,
+            "range": 251
+          },
+          {
+            "damage": 33,
+            "range": 1250
+          },
+          {
+            "damage": 24,
+            "range": 1251
+          },
+          {
+            "damage": 24,
+            "range": 1500
+          },
+          {
+            "damage": 24,
+            "range": 1501
+          }
+        ],
+        "sprintOutTime": 0.2
+      }
+    },
+    "dsr50": {
+      "id": "dsr50",
+      "name": "DSR 50",
+      "class": "primary",
+      "role": "Sniper rifle",
+      "magazineSize": 5,
+      "reserveAmmo": 10,
+      "roundsPerMinute": 300,
+      "initialRoundsPerMinute": null,
+      "initialShotCount": 0,
+      "fireMode": "single",
+      "burstCount": 0,
+      "damage": 98,
+      "ballistics": {
+        "adsKick": {
+          "centerSpeed": 750,
+          "minMagnitude": 30,
+          "pitchMax": 67,
+          "pitchMin": 67,
+          "yawMax": -60,
+          "yawMin": 10
+        },
+        "adsSpread": 0,
+        "adsTransInTime": 0.4,
+        "adsTransOutTime": 0.5,
+        "adsZoomFov": 15,
+        "damage": 98,
+        "hipKick": {
+          "centerSpeed": 500,
+          "minMagnitude": 30,
+          "pitchMax": 100,
+          "pitchMin": 80,
+          "yawMax": -55,
+          "yawMin": -50
+        },
+        "hipSpread": {
+          "decayRate": 5,
+          "duckedMax": 14,
+          "duckedMin": 9.5,
+          "fireAdd": 1,
+          "max": 15,
+          "moveAdd": 5,
+          "standMin": 10
+        },
+        "locations": {
+          "head": 2,
+          "legs": 1,
+          "none": 1,
+          "torso": 1.5,
+          "torsoLower": 1.5
+        },
+        "maxDamageRange": 4000,
+        "moveSpeedScale": 0.95,
+        "penetrateType": "large",
+        "ranges": [
+          {
+            "damage": 98,
+            "range": 5000
+          }
+        ],
+        "sprintOutTime": 0.25
+      }
+    },
+    "ballista": {
+      "id": "ballista",
+      "name": "Ballista",
+      "class": "primary",
+      "role": "Sniper rifle",
+      "magazineSize": 7,
+      "reserveAmmo": 14,
+      "roundsPerMinute": 300,
+      "initialRoundsPerMinute": null,
+      "initialShotCount": 0,
+      "fireMode": "single",
+      "burstCount": 0,
+      "damage": 95,
+      "ballistics": {
+        "adsKick": {
+          "centerSpeed": 500,
+          "minMagnitude": 30,
+          "pitchMax": 40,
+          "pitchMin": 40,
+          "yawMax": -40,
+          "yawMin": 25
+        },
+        "adsSpread": 0,
+        "adsTransInTime": 0.35,
+        "adsTransOutTime": 0.4,
+        "adsZoomFov": 15,
+        "damage": 95,
+        "hipKick": {
+          "centerSpeed": 500,
+          "minMagnitude": 30,
+          "pitchMax": 60,
+          "pitchMin": 40,
+          "yawMax": -55,
+          "yawMin": -50
+        },
+        "hipSpread": {
+          "decayRate": 5,
+          "duckedMax": 14,
+          "duckedMin": 9.5,
+          "fireAdd": 1,
+          "max": 15,
+          "moveAdd": 5,
+          "standMin": 10
+        },
+        "locations": {
+          "head": 2,
+          "legs": 1,
+          "none": 1,
+          "torso": 1.5,
+          "torsoLower": 1
+        },
+        "maxDamageRange": 3000,
+        "moveSpeedScale": 0.96,
+        "penetrateType": "large",
+        "ranges": [
+          {
+            "damage": 95,
+            "range": 3001
+          }
+        ],
+        "sprintOutTime": 0.25
+      }
+    },
+    "svu": {
+      "id": "svu",
+      "name": "SVU-AS",
+      "class": "primary",
+      "role": "Sniper rifle",
+      "magazineSize": 12,
+      "reserveAmmo": 24,
+      "roundsPerMinute": 417,
+      "initialRoundsPerMinute": null,
+      "initialShotCount": 0,
+      "fireMode": "single",
+      "burstCount": 0,
+      "damage": 70,
+      "ballistics": {
+        "adsKick": {
+          "centerSpeed": 800,
+          "minMagnitude": 30,
+          "pitchMax": 40,
+          "pitchMin": 15,
+          "yawMax": 40,
+          "yawMin": -40
+        },
+        "adsSpread": 0,
+        "adsTransInTime": 0.4,
+        "adsTransOutTime": 0.4,
+        "adsZoomFov": 20,
+        "damage": 70,
+        "hipKick": {
+          "centerSpeed": 1000,
+          "minMagnitude": 30,
+          "pitchMax": 40,
+          "pitchMin": 15,
+          "yawMax": 40,
+          "yawMin": -40
+        },
+        "hipSpread": {
+          "decayRate": 5,
+          "duckedMax": 14,
+          "duckedMin": 9.5,
+          "fireAdd": 1,
+          "max": 15,
+          "moveAdd": 5,
+          "standMin": 10
+        },
+        "locations": {
+          "head": 1.5,
+          "legs": 1,
+          "none": 1,
+          "torso": 1,
+          "torsoLower": 1
+        },
+        "maxDamageRange": 2500,
+        "moveSpeedScale": 0.95,
+        "penetrateType": "large",
+        "ranges": [
+          {
+            "damage": 70,
+            "range": 3000
+          }
+        ],
+        "sprintOutTime": 0.25
+      }
+    },
+    "as50": {
+      "id": "as50",
+      "name": "XPR-50",
+      "class": "primary",
+      "role": "Sniper rifle",
+      "magazineSize": 8,
+      "reserveAmmo": 16,
+      "roundsPerMinute": 375,
+      "initialRoundsPerMinute": null,
+      "initialShotCount": 0,
+      "fireMode": "single",
+      "burstCount": 0,
+      "damage": 95,
+      "ballistics": {
+        "adsKick": {
+          "centerSpeed": 850,
+          "minMagnitude": 30,
+          "pitchMax": 70,
+          "pitchMin": 50,
+          "yawMax": 40,
+          "yawMin": -60
+        },
+        "adsSpread": 0,
+        "adsTransInTime": 0.4,
+        "adsTransOutTime": 0.6,
+        "adsZoomFov": 15,
+        "damage": 95,
+        "hipKick": {
+          "centerSpeed": 1000,
+          "minMagnitude": 30,
+          "pitchMax": 60,
+          "pitchMin": 50,
+          "yawMax": 40,
+          "yawMin": -60
+        },
+        "hipSpread": {
+          "decayRate": 5,
+          "duckedMax": 14,
+          "duckedMin": 9.5,
+          "fireAdd": 1,
+          "max": 15,
+          "moveAdd": 5,
+          "standMin": 10
+        },
+        "locations": {
+          "head": 2,
+          "legs": 1,
+          "none": 1,
+          "torso": 1.5,
+          "torsoLower": 1
+        },
+        "maxDamageRange": 4000,
+        "moveSpeedScale": 0.95,
+        "penetrateType": "large",
+        "ranges": [
+          {
+            "damage": 95,
+            "range": 5000
+          }
+        ],
+        "sprintOutTime": 0.25
+      }
+    },
+    "fiveseven": {
+      "id": "fiveseven",
+      "name": "Five-seven",
+      "class": "secondary",
+      "role": "Pistol",
+      "magazineSize": 20,
+      "reserveAmmo": 40,
+      "roundsPerMinute": 750,
+      "initialRoundsPerMinute": null,
+      "initialShotCount": 0,
+      "fireMode": "single",
+      "burstCount": 0,
+      "damage": 55,
+      "ballistics": {
+        "adsKick": {
+          "centerSpeed": 1100,
+          "minMagnitude": 30,
+          "pitchMax": 40,
+          "pitchMin": 20,
+          "yawMax": -20,
+          "yawMin": 40
+        },
+        "adsSpread": 0.1,
+        "adsTransInTime": 0.125,
+        "adsTransOutTime": 0.125,
+        "adsZoomFov": 60,
+        "damage": 55,
+        "hipKick": {
+          "centerSpeed": 1100,
+          "minMagnitude": 0,
+          "pitchMax": 25,
+          "pitchMin": 5,
+          "yawMax": -15,
+          "yawMin": 15
+        },
+        "hipSpread": {
+          "decayRate": 4,
+          "duckedMax": 4,
+          "duckedMin": 2.5,
+          "fireAdd": 1,
+          "max": 5,
+          "moveAdd": 4.5,
+          "standMin": 3
+        },
+        "locations": {
+          "head": 1.4,
+          "legs": 1,
+          "none": 1,
+          "torso": 1,
+          "torsoLower": 1
+        },
+        "maxDamageRange": 100,
+        "moveSpeedScale": 1,
+        "penetrateType": "small",
+        "ranges": [
+          {
+            "damage": 45,
+            "range": 101
+          },
+          {
+            "damage": 45,
+            "range": 800
+          },
+          {
+            "damage": 33,
+            "range": 801
+          },
+          {
+            "damage": 24,
+            "range": 1000
+          },
+          {
+            "damage": 19,
+            "range": 1500
+          }
+        ],
+        "sprintOutTime": 0.2
+      }
+    },
+    "fnp45": {
+      "id": "fnp45",
+      "name": "Tac-45",
+      "class": "secondary",
+      "role": "Pistol",
+      "magazineSize": 10,
+      "reserveAmmo": 20,
+      "roundsPerMinute": 625,
+      "initialRoundsPerMinute": null,
+      "initialShotCount": 0,
+      "fireMode": "single",
+      "burstCount": 0,
+      "damage": 55,
+      "ballistics": {
+        "adsKick": {
+          "centerSpeed": 1100,
+          "minMagnitude": 30,
+          "pitchMax": 50,
+          "pitchMin": 25,
+          "yawMax": -35,
+          "yawMin": 35
+        },
+        "adsSpread": 0.3,
+        "adsTransInTime": 0.125,
+        "adsTransOutTime": 0.125,
+        "adsZoomFov": 60,
+        "damage": 55,
+        "hipKick": {
+          "centerSpeed": 1100,
+          "minMagnitude": 0,
+          "pitchMax": 50,
+          "pitchMin": 25,
+          "yawMax": -35,
+          "yawMin": 35
+        },
+        "hipSpread": {
+          "decayRate": 4,
+          "duckedMax": 4,
+          "duckedMin": 2.5,
+          "fireAdd": 1,
+          "max": 5,
+          "moveAdd": 4.5,
+          "standMin": 3
+        },
+        "locations": {
+          "head": 1.4,
+          "legs": 1,
+          "none": 1,
+          "torso": 1,
+          "torsoLower": 1
+        },
+        "maxDamageRange": 350,
+        "moveSpeedScale": 1,
+        "penetrateType": "small",
+        "ranges": [
+          {
+            "damage": 45,
+            "range": 351
+          },
+          {
+            "damage": 45,
+            "range": 750
+          },
+          {
+            "damage": 33,
+            "range": 751
+          },
+          {
+            "damage": 24,
+            "range": 1000
+          },
+          {
+            "damage": 19,
+            "range": 1300
+          }
+        ],
+        "sprintOutTime": 0.2
+      }
+    },
+    "kard": {
+      "id": "kard",
+      "name": "KAP-40",
+      "class": "secondary",
+      "role": "Pistol",
+      "magazineSize": 15,
+      "reserveAmmo": 30,
+      "roundsPerMinute": 938,
+      "initialRoundsPerMinute": null,
+      "initialShotCount": 0,
+      "fireMode": "auto",
+      "burstCount": 0,
+      "damage": 45,
+      "ballistics": {
+        "adsKick": {
+          "centerSpeed": 1500,
+          "minMagnitude": 30,
+          "pitchMax": 75,
+          "pitchMin": -50,
+          "yawMax": -25,
+          "yawMin": 25
+        },
+        "adsSpread": 0.3,
+        "adsTransInTime": 0.1,
+        "adsTransOutTime": 0.1,
+        "adsZoomFov": 60,
+        "damage": 45,
+        "hipKick": {
+          "centerSpeed": 1500,
+          "minMagnitude": 0,
+          "pitchMax": 10,
+          "pitchMin": -15,
+          "yawMax": -25,
+          "yawMin": 25
+        },
+        "hipSpread": {
+          "decayRate": 4,
+          "duckedMax": 4,
+          "duckedMin": 2.5,
+          "fireAdd": 1,
+          "max": 5,
+          "moveAdd": 4.5,
+          "standMin": 3
+        },
+        "locations": {
+          "head": 1.4,
+          "legs": 1,
+          "none": 1,
+          "torso": 1,
+          "torsoLower": 1
+        },
+        "maxDamageRange": 500,
+        "moveSpeedScale": 1,
+        "penetrateType": "small",
+        "ranges": [
+          {
+            "damage": 33,
+            "range": 501
+          },
+          {
+            "damage": 33,
+            "range": 850
+          },
+          {
+            "damage": 24,
+            "range": 851
+          },
+          {
+            "damage": 24,
+            "range": 1300
+          },
+          {
+            "damage": 19,
+            "range": 1301
+          }
+        ],
+        "sprintOutTime": 0.2
+      }
+    },
+    "beretta93r": {
+      "id": "beretta93r",
+      "name": "B23R",
+      "class": "secondary",
+      "role": "Pistol",
+      "magazineSize": 15,
+      "reserveAmmo": 30,
+      "roundsPerMinute": 938,
+      "initialRoundsPerMinute": null,
+      "initialShotCount": 0,
+      "fireMode": "burst",
+      "burstCount": 3,
+      "damage": 45,
+      "ballistics": {
+        "adsKick": {
+          "centerSpeed": 1100,
+          "minMagnitude": 30,
+          "pitchMax": 55,
+          "pitchMin": -10,
+          "yawMax": -35,
+          "yawMin": 35
+        },
+        "adsSpread": 0,
+        "adsTransInTime": 0.125,
+        "adsTransOutTime": 0.125,
+        "adsZoomFov": 60,
+        "damage": 45,
+        "hipKick": {
+          "centerSpeed": 1100,
+          "minMagnitude": 0,
+          "pitchMax": 55,
+          "pitchMin": -10,
+          "yawMax": -35,
+          "yawMin": 35
+        },
+        "hipSpread": {
+          "decayRate": 4,
+          "duckedMax": 5,
+          "duckedMin": 2.5,
+          "fireAdd": 1,
+          "max": 5,
+          "moveAdd": 4.5,
+          "standMin": 3
+        },
+        "locations": {
+          "head": 1.4,
+          "legs": 1,
+          "none": 1,
+          "torso": 1,
+          "torsoLower": 1
+        },
+        "maxDamageRange": 600,
+        "moveSpeedScale": 1,
+        "penetrateType": "small",
+        "ranges": [
+          {
+            "damage": 33,
+            "range": 601
+          },
+          {
+            "damage": 33,
+            "range": 900
+          },
+          {
+            "damage": 24,
+            "range": 901
+          },
+          {
+            "damage": 24,
+            "range": 1200
+          },
+          {
+            "damage": 19,
+            "range": 1201
+          }
+        ],
+        "sprintOutTime": 0.2
+      }
+    }
+  }
+}
