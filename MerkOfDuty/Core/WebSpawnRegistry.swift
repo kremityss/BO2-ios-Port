@@ -56,18 +56,33 @@ final class WebSpawnRegistry {
         case "ffa": return ["mp_dm_spawn"]
         default:
             if initial {
-            // Never use the same free-for-all marker for opposing TDM teams.
-            // Distinct authored start markers also keep bots out of the
-            // player's immediate camera view at match initialization.
-            let authoredGroup = groups(mode: mode, team: team, initial: true).first ?? "mp_dm_spawn"
-            let candidates = points.filter { $0.classname == authoredGroup && $0.position != nil }
+                return team == 0 ? ["mp_tdm_spawn_allies_start"] : ["mp_tdm_spawn_axis_start"]
+            }
+            return team == 0 ? ["mp_tdm_spawn_allies_start", "mp_tdm_spawn"]
+                             : ["mp_tdm_spawn_axis_start", "mp_tdm_spawn"]
+        }
+    }
+
+    /// Match the deployed index.html: chooseSpawn() selects the FIRST
+    /// mp_dm_spawn marker (not the first team start marker) on match entry.
+    /// The web resolves its collision floor by a downward ray; our coarse
+    /// native collision grid may require a small planar correction.
+    func select(mode: String = "tdm", team: Int, initial: Bool,
+                after index: Int, collision: NativeCollision,
+                eyeHeight: Float = 0.60,
+                threats: [SIMD3<Float>] = []) -> NativeSpawnPose? {
+        if initial {
+            // TDM starts use opposing authored team bases. Bots receive a
+            // distinct marker chosen by the requested index.
+            let group = groups(mode:mode,team:team,initial:true).first ?? "mp_dm_spawn"
+            let candidates = points.filter { $0.classname == group && $0.position != nil }
             if !candidates.isEmpty {
                 for offset in 0..<candidates.count {
-                    let marker = candidates[(max(0,index) + offset) % candidates.count]
-                    guard let location = marker.position,
-                          let grounded = collision.nearestAuthoredSpawnGround(
-                            at: location, eyeHeight: eyeHeight, radius: 4,
-                            maxFloorDifference: 1.25) else { continue }
+                    let marker = candidates[(max(0,index)+offset) % candidates.count]
+                    guard let original=marker.position,
+                          let grounded=collision.nearestAuthoredSpawnGround(
+                            at:original,eyeHeight:eyeHeight,radius:4,
+                            maxFloorDifference:1.25) else {continue}
                     return NativeSpawnPose(position:grounded,yaw:marker.yaw,
                                            guid:marker.id,group:marker.classname)
                 }

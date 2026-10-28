@@ -391,7 +391,7 @@ final class FPSViewController:UIViewController {
                     self.updateHUD()
                 } else {
                     NativeLevel.choose(previous)
-                    self.renderer=GameRenderer(view:self.screen)
+                    self.renderer = GameRenderer(view: self.screen)
                 }
             })
         }
