@@ -19,7 +19,7 @@ def clear_authored_spawns(collision, spawns, clearance_radius=0.85):
     if len(data)!=24+width*height*6 or not 0.3<=cell<=3:
         raise ValueError('Malformed collision grid')
     root=json.loads(Path(spawns).read_text())
-    if root.get('map')!='mp_nuketown_2020' or len(root.get('spawns',[]))<200:
+    if root.get('map') not in ('mp_nuketown_2020','mp_hijacked') or len(root.get('spawns',[]))<200:
         raise ValueError('Missing original Nuketown spawn registry')
     touched=set()
     grounded=0

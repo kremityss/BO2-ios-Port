@@ -168,6 +168,7 @@ final class FPSViewController:UIViewController {
     private var reload:UIButton!
     private var swap:UIButton!
     private var respawn:UIButton!
+    private var mapPicker:UIButton!
     private var hudReady=false
 
     override var prefersStatusBarHidden:Bool {true}
@@ -216,7 +217,7 @@ final class FPSViewController:UIViewController {
         radar.world=renderer.world
         view.addSubview(radar)
         label(mapName,size:9,weight:.heavy)
-        mapName.text="NUKETOWN // TDM TEST"
+        mapName.text=NativeLevel.selected.displayName+" // TDM"
         label(stats,size:11,weight:.heavy)
         stats.textAlignment = .center
         label(ammo,size:15,weight:.heavy)
@@ -274,7 +275,17 @@ final class FPSViewController:UIViewController {
         slide=makeAction("SLIDE",symbol:"figure.run")
         reload=makeAction("RELOAD",symbol:"arrow.clockwise")
         swap=makeAction("SWAP",symbol:"arrow.left.arrow.right")
-        respawn=makeAction("RESET",symbol:"arrow.counterclockwise")
+        respawn=makeAction("",symbol:"arrow.counterclockwise")
+        mapPicker=UIButton(type:.system)
+        mapPicker.setTitle("MAPS  ▾",for:.normal)
+        mapPicker.setTitleColor(.white,for:.normal)
+        mapPicker.titleLabel?.font=.systemFont(ofSize:12,weight:.heavy)
+        mapPicker.backgroundColor=UIColor.black.withAlphaComponent(0.54)
+        mapPicker.layer.cornerRadius=10
+        mapPicker.layer.borderWidth=1
+        mapPicker.layer.borderColor=UIColor.white.withAlphaComponent(0.40).cgColor
+        view.addSubview(mapPicker)
+        mapPicker.addTarget(self,action:#selector(chooseMap),for:.touchUpInside)
         for b in [fire!,ads!,jump!,slide!,reload!,swap!,respawn!] {view.addSubview(b)}
         fire.addTarget(self,action:#selector(fireDown),for:.touchDown)
         fire.addTarget(self,action:#selector(fireUp),for:[.touchUpInside,.touchUpOutside,.touchCancel])
@@ -298,7 +309,8 @@ final class FPSViewController:UIViewController {
         mapName.frame=CGRect(x:left+13,y:top+99*s,width:148*s,height:14*s)
         stats.frame=CGRect(x:w/2-115*s,y:top+12,width:230*s,height:28*s)
         performance.frame=CGRect(x:right-112*s,y:top+10,width:70*s,height:22*s)
-        respawn.frame=CGRect(x:right-40*s,y:top+8,width:36*s,height:36*s)
+        respawn.frame=CGRect(x:right-42*s,y:top+10,width:38*s,height:38*s)
+        mapPicker.frame=CGRect(x:left+109*s,y:top+12,width:94*s,height:33*s)
         respawn.layer.cornerRadius=18*s
         healthBackground.frame=CGRect(x:left+12,y:top+118*s,width:110*s,height:7*s)
         healthFill.frame=CGRect(x:1,y:1,width:108*s,height:5*s)
@@ -337,8 +349,8 @@ final class FPSViewController:UIViewController {
             config.title=world.controls.crouch ? "STAND" : "SLIDE"
             slide.configuration=config
         }
-        if world.health<=0 {mapName.text="RESPAWNING // NUKETOWN"}
-        else {mapName.text="NUKETOWN / " + world.spawnGroup.replacingOccurrences(of:"mp_",with:"").uppercased()}
+        if world.health<=0 {mapName.text="RESPAWNING // "+NativeLevel.selected.displayName}
+        else {mapName.text=NativeLevel.selected.displayName+" / TDM"}
     }
 
     @objc private func fireDown(){renderer.world.controls.firing=true}
@@ -360,5 +372,35 @@ final class FPSViewController:UIViewController {
     }
     @objc private func queueReload(){renderer.world.controls.reloadQueued=true}
     @objc private func queueSwap(){renderer.world.switchWeapon()}
+    @objc private func chooseMap(){
+        let alert=UIAlertController(title:"SELECT MAP",message:"Native local match • verified map assets",preferredStyle:.actionSheet)
+        for level in NativeLevel.allCases where level.isBundled {
+            alert.addAction(UIAlertAction(title:level.displayName,style:.default){ [weak self] _ in
+                guard let self, NativeLevel.selected != level else { return }
+                let previous=NativeLevel.selected
+                NativeLevel.choose(level)
+                self.renderer.onHUD=nil
+                self.screen.delegate=nil
+                if let next=GameRenderer(view:self.screen) {
+                    self.renderer=next
+                    self.radar.world=next.world
+                    next.onHUD = { [weak self] _ in
+                        if Thread.isMainThread { self?.updateHUD() }
+                        else { DispatchQueue.main.async { self?.updateHUD() } }
+                    }
+                    self.updateHUD()
+                } else {
+                    NativeLevel.choose(previous)
+                    self.renderer=GameRenderer(view:self.screen)
+                }
+            })
+        }
+        alert.addAction(UIAlertAction(title:"Cancel",style:.cancel))
+        if let popover=alert.popoverPresentationController {
+            popover.sourceView=mapPicker
+            popover.sourceRect=mapPicker.bounds
+        }
+        present(alert,animated:true)
+    }
     @objc private func resetSpawn(){renderer.world.debugRespawn()}
 }

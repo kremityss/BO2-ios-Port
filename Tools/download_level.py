@@ -62,10 +62,13 @@ def fetch_external_images(folder, base=BASE, limit=512, glb_name=PARTS[0]):
     return {'downloaded':downloaded,'missing':missing,'referenced_images':len(images)}
 
 
-def download(folder, base=BASE, textures=True):
+def download(folder, base=BASE, textures=True, map_name='nuketown_2020'):
+    if map_name not in ('nuketown_2020','hijacked'):
+        raise ValueError('Only verified native maps are supported')
+    parts = PARTS if map_name == 'nuketown_2020' else ('hijacked_optimized.glb','hijacked_collision_bvh.bin','hijacked_collision_bvh.json')
     folder.mkdir(parents=True,exist_ok=True)
     sizes={}
-    for name in PARTS:
+    for name in parts:
         url=base.rstrip('/')+'/'+name
         last=None
         for tries in range(3):
@@ -91,7 +94,7 @@ def download(folder, base=BASE, textures=True):
         else:
             raise RuntimeError(f'Unable to retrieve {url}: {last}')
     if textures:
-        sizes['texture_recovery'] = fetch_external_images(folder,base)
+        sizes['texture_recovery'] = fetch_external_images(folder,base,glb_name=map_name+'_optimized.glb')
     (folder/'recovery-report.json').write_text(json.dumps(sizes,indent=2))
     return sizes
 
@@ -99,9 +102,10 @@ def download(folder, base=BASE, textures=True):
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--out',type=Path,default=Path('build/recovered-map'))
+    p.add_argument('--map',default='nuketown_2020',choices=['nuketown_2020','hijacked'])
     p.add_argument('--base',default=BASE)
     p.add_argument('--no-textures',action='store_true',help='Skip external texture recovery')
     x=p.parse_args()
     if not x.base.startswith('https://') or not x.base.endswith('.pages.dev'):
         p.error('The base must be an HTTPS *.pages.dev deployment')
-    download(x.out,x.base,textures=not x.no_textures)
+    download(x.out,x.base,textures=not x.no_textures,map_name=x.map)

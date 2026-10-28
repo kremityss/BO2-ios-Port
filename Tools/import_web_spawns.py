@@ -15,9 +15,9 @@ PINNED_URL = 'https://56538cf3.merk-of-duty.pages.dev/nuketown_2020_nav_hints.js
 
 
 def native_spawns(hints, transform):
-    if hints.get('map') != 'mp_nuketown_2020' or not isinstance(hints.get('spawns'), list):
+    if hints.get('map') not in ('mp_nuketown_2020','mp_hijacked') or not isinstance(hints.get('spawns'), list):
         raise ValueError('Expected the deployed Nuketown 2025 nav-hints spawn registry')
-    if transform.get('map') != 'mp_nuketown_2020':
+    if transform.get('map') != hints.get('map'):
         raise ValueError('Spawn/map transform identity mismatch')
     scale = transform['scale']
     offset = transform['offset']
@@ -49,7 +49,7 @@ def native_spawns(hints, transform):
 
 
 def fetch_hints(url=PINNED_URL):
-    if url != PINNED_URL:
+    if url not in (PINNED_URL, PINNED_URL.replace('nuketown_2020','hijacked')):
         raise ValueError('Only pinned HTTPS deployment is allowed')
     with urlopen(Request(url, headers={'User-Agent': 'MerkOfDutyNative/0.7'}), timeout=60) as r:
         raw = r.read(8_000_001)
@@ -61,10 +61,11 @@ def fetch_hints(url=PINNED_URL):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--transform', type=Path, required=True)
+    p.add_argument('--map', choices=['nuketown_2020','hijacked'], default='nuketown_2020')
     p.add_argument('--out', type=Path, required=True)
     p.add_argument('--hints', type=Path, help='Local JSON file for tests/offline conversion')
     args = p.parse_args()
-    hints = json.loads(args.hints.read_text()) if args.hints else fetch_hints()
+    hints = json.loads(args.hints.read_text()) if args.hints else fetch_hints(PINNED_URL.replace('nuketown_2020',args.map))
     result = native_spawns(hints, json.loads(args.transform.read_text()))
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(result, indent=2) + '\n')

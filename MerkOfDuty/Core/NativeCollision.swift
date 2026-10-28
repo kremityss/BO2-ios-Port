@@ -49,7 +49,7 @@ final class NativeCollision {
 
     static func load() -> NativeCollision? {
         guard NativeMap.isPresent,
-              let url=Bundle.main.url(forResource:"MerkCollision",withExtension:"bin"),
+              let url=Bundle.main.url(forResource:NativeLevel.selected.resource("MerkCollision"),withExtension:"bin"),
               let data=try? Data(contentsOf:url) else {return nil}
         return NativeCollision(data:data)
     }

@@ -10,7 +10,7 @@ enum NativeMap {
         Bundle.main.url(forResource: "MerkMap", withExtension: "meshbin") != nil
     }
 
-    static func load(resource: String = "MerkMap") -> [GPUVertex]? {
+    static func load(resource: String = NativeLevel.selected.resource("MerkMap")) -> [GPUVertex]? {
         guard let url = Bundle.main.url(forResource: resource, withExtension: "meshbin"),
               let data = try? Data(contentsOf: url), data.count >= 12 else { return nil }
         let bytes = [UInt8](data)

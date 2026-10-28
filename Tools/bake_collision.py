@@ -42,7 +42,7 @@ def original_collision_triangles(metadata, binary, transform_json):
     """
     doc=json.loads(Path(metadata).read_text())
     transform=json.loads(Path(transform_json).read_text())
-    if doc.get('format')!='collision-bvh-v1' or transform.get('map')!='mp_nuketown_2020':
+    if doc.get('format')!='collision-bvh-v1' or transform.get('map') not in ('mp_nuketown_2020','mp_hijacked'):
         raise ValueError('Map identity or web BVH format mismatch')
     offset=transform.get('offset')
     scale=float(transform.get('scale',0))

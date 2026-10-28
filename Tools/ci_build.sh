@@ -43,6 +43,36 @@ if [ "$MODE" = full ]; then
   python3 Tools/clear_authored_spawn_walls.py \
     --collision MerkOfDuty/Resources/MerkCollision.bin \
     --spawns MerkOfDuty/Resources/MerkWebSpawns.json
+  # Hijacked ships a real GLB, 350 Basis images, and its own original
+  # 208,616-triangle collision BVH; the other three catalog maps still ship
+  # with placeholder geometry and are deliberately excluded from the picker.
+  python3 Tools/download_level.py --map hijacked --out build/recovered-hijacked
+  python3 Tools/convert_gltf.py build/recovered-hijacked/hijacked_optimized.glb \
+    --out MerkOfDuty/Resources/MerkMapHijacked.meshbin \
+    --texture-atlas MerkOfDuty/Resources/MerkAtlasHijacked.png \
+    --scale 0.01 --max-triangles 1000000 --max-source-coordinate 50000 \
+    --instances-out MerkOfDuty/Resources/MerkInstancesHijacked.bin \
+    --minimum-decoded-textures 1 --map-id mp_hijacked \
+    --transform-metadata build/recovered-hijacked/native-transform.json
+  python3 Tools/import_web_spawns.py --map hijacked \
+    --transform build/recovered-hijacked/native-transform.json \
+    --out MerkOfDuty/Resources/MerkWebSpawnsHijacked.json
+  python3 Tools/bake_collision.py MerkOfDuty/Resources/MerkMapHijacked.meshbin \
+    --out MerkOfDuty/Resources/MerkCollisionHijacked.bin \
+    --cell-size 0.75 --playable-radius 160 \
+    --web-bvh-meta build/recovered-hijacked/hijacked_collision_bvh.json \
+    --web-bvh-binary build/recovered-hijacked/hijacked_collision_bvh.bin \
+    --web-transform build/recovered-hijacked/native-transform.json
+  python3 Tools/clear_authored_spawn_walls.py \
+    --collision MerkOfDuty/Resources/MerkCollisionHijacked.bin \
+    --spawns MerkOfDuty/Resources/MerkWebSpawnsHijacked.json
+  # Static character LOD (temporary until native skeletal animation arrives).
+  python3 Tools/download_enemy.py --out build/recovered-enemy
+  python3 Tools/convert_gltf.py build/recovered-enemy/enemies/c_chn_mp_pla_assault_fb_lod2.glb \
+    --out MerkOfDuty/Resources/MerkEnemyAssault.meshbin \
+    --texture-atlas MerkOfDuty/Resources/MerkEnemyAssaultAtlas.png \
+    --weapon-length 1.75 --max-triangles 200000 \
+    --minimum-decoded-textures 1
   python3 Tools/download_weapons.py --out build/recovered-weapons
   for item in \
     'M27:t6_wpn_ar_hk416_view_lod0' \

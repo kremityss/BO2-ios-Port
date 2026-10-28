@@ -37,10 +37,10 @@ final class WebSpawnRegistry {
     private init(points: [WebSpawnPoint]) { self.points = points }
 
     static func load() -> WebSpawnRegistry? {
-        guard let url = Bundle.main.url(forResource: "MerkWebSpawns", withExtension: "json"),
+        guard let url = Bundle.main.url(forResource: NativeLevel.selected.resource("MerkWebSpawns"), withExtension: "json"),
               let data = try? Data(contentsOf: url),
               let file = try? JSONDecoder().decode(WebSpawnFile.self, from: data),
-              file.version == 1 && file.map == "mp_nuketown_2020" && !file.spawns.isEmpty else { return nil }
+              file.version == 1 && file.map == NativeLevel.selected.mapID && !file.spawns.isEmpty else { return nil }
         return WebSpawnRegistry(points: file.spawns)
     }
 
@@ -56,29 +56,21 @@ final class WebSpawnRegistry {
         case "ffa": return ["mp_dm_spawn"]
         default:
             if initial {
-                return team == 0 ? ["mp_tdm_spawn_allies_start"] : ["mp_tdm_spawn_axis_start"]
-            }
-            return team == 0 ? ["mp_tdm_spawn_allies_start", "mp_tdm_spawn"]
-                             : ["mp_tdm_spawn_axis_start", "mp_tdm_spawn"]
-        }
-    }
-
-    /// Match the deployed index.html: chooseSpawn() selects the FIRST
-    /// mp_dm_spawn marker (not the first team start marker) on match entry.
-    /// The web resolves its collision floor by a downward ray; our coarse
-    /// native collision grid may require a small planar correction.
-    func select(mode: String = "tdm", team: Int, initial: Bool,
-                after index: Int, collision: NativeCollision,
-                eyeHeight: Float = 0.60,
-                threats: [SIMD3<Float>] = []) -> NativeSpawnPose? {
-        if initial {
-            if let first = points.first(where: { $0.classname == "mp_dm_spawn" }),
-               let original = first.position,
-               let grounded = collision.nearestAuthoredSpawnGround(
-                 at: original, eyeHeight: eyeHeight, radius: 7.5,
-                 maxFloorDifference: 1.25) {
-                return NativeSpawnPose(position: grounded,yaw:first.yaw,
-                                       guid:first.id,group:first.classname)
+            // Never use the same free-for-all marker for opposing TDM teams.
+            // Distinct authored start markers also keep bots out of the
+            // player's immediate camera view at match initialization.
+            let authoredGroup = groups(mode: mode, team: team, initial: true).first ?? "mp_dm_spawn"
+            let candidates = points.filter { $0.classname == authoredGroup && $0.position != nil }
+            if !candidates.isEmpty {
+                for offset in 0..<candidates.count {
+                    let marker = candidates[(max(0,index) + offset) % candidates.count]
+                    guard let location = marker.position,
+                          let grounded = collision.nearestAuthoredSpawnGround(
+                            at: location, eyeHeight: eyeHeight, radius: 4,
+                            maxFloorDifference: 1.25) else { continue }
+                    return NativeSpawnPose(position:grounded,yaw:marker.yaw,
+                                           guid:marker.id,group:marker.classname)
+                }
             }
         }
         // EnemySystem.safeSpawnFor() evaluates projected mp_dm_spawn markers,

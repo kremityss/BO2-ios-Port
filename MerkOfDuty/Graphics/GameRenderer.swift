@@ -17,6 +17,9 @@ final class GameRenderer: NSObject, MTKViewDelegate {
     let weaponBuffers: [MTLBuffer?]
     let weaponVertexCounts: [Int]
     let weaponTextures: [MTLTexture]
+    let enemyBuffer: MTLBuffer?
+    let enemyVertexCount: Int
+    let enemyTexture: MTLTexture
     var onHUD: ((String) -> Void)?
     private var previousTime = CACurrentMediaTime()
     private var hudAccum: Double = 0
@@ -60,7 +63,7 @@ final class GameRenderer: NSObject, MTKViewDelegate {
             white.replace(region: MTLRegionMake2D(0,0,1,1), mipmapLevel: 0,
                           withBytes: ptr.baseAddress!, bytesPerRow: 4)
         }
-        if let atlasURL = Bundle.main.url(forResource: "MerkAtlas", withExtension: "png"),
+        if let atlasURL = Bundle.main.url(forResource: NativeLevel.selected.resource("MerkAtlas"), withExtension: "png"),
            let texture = try? MTKTextureLoader(device:d).newTexture(URL:atlasURL,
                   options:[.SRGB:true,.origin:MTKTextureLoader.Origin.topLeft]) {
             atlasTexture = texture
@@ -114,6 +117,15 @@ final class GameRenderer: NSObject, MTKViewDelegate {
         weaponBuffers = loadedBuffers
         weaponVertexCounts = loadedCounts
         weaponTextures = loadedTextures
+        if let vertices = NativeMap.load(resource: "MerkEnemyAssault"), !vertices.isEmpty,
+           let buffer = d.makeBuffer(bytes:vertices,length:vertices.count * MemoryLayout<GPUVertex>.stride,options:.storageModeShared) {
+            enemyBuffer = buffer
+            enemyVertexCount = vertices.count
+        } else { enemyBuffer = nil; enemyVertexCount = 0 }
+        if let url = Bundle.main.url(forResource:"MerkEnemyAssaultAtlas",withExtension:"png"),
+           let tex = try? loader.newTexture(URL:url, options:[.SRGB:true,.origin:MTKTextureLoader.Origin.topLeft]) {
+            enemyTexture=tex
+        } else { enemyTexture=white }
         super.init()
         view.device = d
         view.colorPixelFormat = .bgra8Unorm
@@ -185,6 +197,19 @@ final class GameRenderer: NSObject, MTKViewDelegate {
         encoder.setVertexBuffer(cubeBuffer, offset: 0, index: 0)
         encoder.setVertexBuffer(instances, offset: 0, index: 2)
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: props.count)
+        // Native enemy LOD mesh replaces the debug cuboids visible in v0.7.
+        if let enemyBuffer, enemyVertexCount > 0 {
+            encoder.setFragmentTexture(enemyTexture,index:0)
+            encoder.setVertexBuffer(enemyBuffer,offset:0,index:0)
+            for (index,bot) in world.bots.enumerated() where bot.alive {
+                var enemy = GPUInstance(
+                    model:simd_float4x4.translation(bot.position + SIMD3<Float>(0,0.86,0))
+                        * simd_float4x4.rotateY(Float(index % 2) * Float.pi),
+                    tint:SIMD4<Float>(repeating:1))
+                encoder.setVertexBytes(&enemy,length:MemoryLayout<GPUInstance>.stride,index:2)
+                encoder.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:enemyVertexCount)
+            }
+        }
         // Imported weapon GLBs have their own packed albedo atlases and a
         // pre-aligned axis. Fallback blocks remain for unavailable models.
         if importedGun, let gun = weaponBuffers[world.weaponIndex] {
@@ -217,7 +242,7 @@ final class GameRenderer: NSObject, MTKViewDelegate {
             instances.append(GPUInstance(model: m, tint: color))
         }
         for b in world.blocks { box(b.center, b.size, b.color) }
-        for b in world.bots where b.alive {
+        if enemyBuffer == nil { for b in world.bots where b.alive {
             let p = b.position
             box(p + SIMD3<Float>(0, 0.42, 0), SIMD3<Float>(0.25,0.31,0.20), SIMD4<Float>(0.24,0.30,0.32,1))
             box(p + SIMD3<Float>(0, 0.65, 0), SIMD3<Float>(0.21,0.20,0.21), SIMD4<Float>(0.58,0.44,0.34,1))
@@ -225,6 +250,7 @@ final class GameRenderer: NSObject, MTKViewDelegate {
             box(p + SIMD3<Float>(0.07, 0.18, 0), SIMD3<Float>(0.10,0.34,0.14), SIMD4<Float>(0.17,0.22,0.23,1))
             box(p + SIMD3<Float>(0, 0.83, 0), SIMD3<Float>(0.32,0.04,0.10), SIMD4<Float>(0.48,0.08,0.07,1))
         }
+        } // End fallback-only debug soldier geometry.
         // First-person weapon geometry is truly in the 3D world. No 2D gun sprite.
         let camera = world.cameraPosition
         let f = world.forward

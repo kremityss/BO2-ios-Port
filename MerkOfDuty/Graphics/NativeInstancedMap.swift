@@ -11,7 +11,7 @@ enum NativeInstancedMap {
     }
 
     static func load() -> [Group] {
-        guard let url = Bundle.main.url(forResource: "MerkInstances", withExtension: "bin"),
+        guard let url = Bundle.main.url(forResource: NativeLevel.selected.resource("MerkInstances"), withExtension: "bin"),
               let data = try? Data(contentsOf: url, options: .mappedIfSafe) else { return [] }
         return decode(data) ?? []
     }

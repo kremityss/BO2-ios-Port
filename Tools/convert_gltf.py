@@ -340,7 +340,7 @@ def align_weapon(p, direction):
     return p
 
 
-def convert(source, output, scale, limit, center=True, texture_atlas=None, weapon_length=None, max_source_coordinate=None, instances_out=None, minimum_decoded_textures=0, transform_metadata=None):
+def convert(source, output, scale, limit, center=True, texture_atlas=None, weapon_length=None, max_source_coordinate=None, instances_out=None, minimum_decoded_textures=0, transform_metadata=None, map_id='mp_nuketown_2020'):
     doc, buffers = load_gltf(source)
     textured = texture_atlas is not None
     rects = {-1:(0.,0.,1.,1.)}
@@ -424,7 +424,7 @@ def convert(source, output, scale, limit, center=True, texture_atlas=None, weapo
     if transform_metadata is not None:
         transform_metadata.parent.mkdir(parents=True, exist_ok=True)
         transform_metadata.write_text(json.dumps({
-            'map': 'mp_nuketown_2020', 'scale': scale, 'offset': offset,
+            'map': map_id, 'scale': scale, 'offset': offset,
             'sourceBounds': [minp, maxp],
             'note': 'Native position = (web.position - offset) * scale'
         }, indent=2) + '\n')
@@ -547,12 +547,13 @@ def main():
     p.add_argument('--scale',type=float,default=0.01)
     p.add_argument('--max-triangles',type=int,default=1_000_000)
     p.add_argument('--keep-origin',action='store_true')
+    p.add_argument('--map-id',default='mp_nuketown_2020',choices=['mp_nuketown_2020','mp_hijacked'])
     p.add_argument('--texture-atlas',type=Path,help='Write PNG atlas and MERKMAP2 UV vertices (requires Pillow)')
     p.add_argument('--weapon-length',type=float,help='Normalize model largest axis to meters and orient its longest axis as Z')
     p.add_argument('--max-source-coordinate',type=float,help='Exclude remote environment/sky triangles outside +/- this many source units')
     p.add_argument('--instances-out',type=Path,help='Write GPU-instanced scenery as MERKINS1; excludes prototype copies from main map')
     p.add_argument('--minimum-decoded-textures',type=int,default=0,help='Fail build if fewer albedo textures decode than this count')
     args=p.parse_args()
-    convert(args.glb,args.out,args.scale,args.max_triangles,not args.keep_origin,args.texture_atlas,args.weapon_length,args.max_source_coordinate,args.instances_out,args.minimum_decoded_textures,args.transform_metadata)
+    convert(args.glb,args.out,args.scale,args.max_triangles,not args.keep_origin,args.texture_atlas,args.weapon_length,args.max_source_coordinate,args.instances_out,args.minimum_decoded_textures,args.transform_metadata,args.map_id)
 
 if __name__ == '__main__':main()
