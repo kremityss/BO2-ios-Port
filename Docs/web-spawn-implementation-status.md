@@ -1,0 +1,1 @@
+The source-faithful spawn importer is implemented and tested in the separate v0.7 ZIP. The deployment contains 267 authored spawn definitions. Native parity build pending.
