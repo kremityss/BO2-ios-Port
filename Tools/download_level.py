@@ -11,7 +11,8 @@ from pathlib import Path
 
 BASE = 'https://56538cf3.merk-of-duty.pages.dev'
 PARTS = ('nuketown_2020_optimized.glb', 'nuketown_2020_optimized.buffer-0.bin',
-         'nuketown_2020_optimized.buffer-1.bin')
+         'nuketown_2020_optimized.buffer-1.bin',
+         'nuketown_2020_collision_bvh.bin', 'nuketown_2020_collision_bvh.json')
 
 
 def fetch_external_images(folder, base=BASE, limit=512, glb_name=PARTS[0]):
@@ -73,11 +74,13 @@ def download(folder, base=BASE, textures=True):
                 with urllib.request.urlopen(req,timeout=90) as response:
                     mime=response.headers.get('Content-Type','')
                     data=response.read()
+                if name.endswith('.json') and json.loads(data).get('format') != 'collision-bvh-v1':
+                    raise ValueError('Invalid original collision BVH metadata')
                 if name.endswith('.glb') and data[:4] != b'glTF':
                     raise ValueError('Invalid GLB magic')
                 if mime.startswith('text/html') or data[:30].lower().startswith(b'<!doctype html'):
                     raise ValueError('Received HTML fallback')
-                if len(data)<1000: raise ValueError('Unexpectedly short file')
+                if len(data)<500: raise ValueError('Unexpectedly short file')
                 (folder/name).write_bytes(data)
                 sizes[name]=len(data)
                 print(f'{name}: {len(data)} bytes',flush=True)

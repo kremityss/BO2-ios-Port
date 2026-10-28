@@ -36,7 +36,10 @@ if [ "$MODE" = full ]; then
     --transform build/recovered-map/native-transform.json \
     --out MerkOfDuty/Resources/MerkWebSpawns.json
   python3 Tools/bake_collision.py MerkOfDuty/Resources/MerkMap.meshbin \
-    --out MerkOfDuty/Resources/MerkCollision.bin --cell-size 0.75 --playable-radius 160
+    --out MerkOfDuty/Resources/MerkCollision.bin --cell-size 0.75 --playable-radius 160 \
+    --web-bvh-meta build/recovered-map/nuketown_2020_collision_bvh.json \
+    --web-bvh-binary build/recovered-map/nuketown_2020_collision_bvh.bin \
+    --web-transform build/recovered-map/native-transform.json
   python3 Tools/download_weapons.py --out build/recovered-weapons
   for item in \
     'M27:t6_wpn_ar_hk416_view_lod0' \

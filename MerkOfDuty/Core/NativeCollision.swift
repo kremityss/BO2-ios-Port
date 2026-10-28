@@ -193,4 +193,41 @@ final class NativeCollision {
         }
         return nil
     }
+
+    /// Snap an original web spawn marker to the closest authored collision floor.
+    /// The web game raycasts downward from each marker; this is the bounded
+    /// 2.5D-grid equivalent, not a projection onto arbitrary render geometry.
+    func nearestAuthoredSpawnGround(at authored: SIMD3<Float>,
+                                    eyeHeight: Float = 0.60,
+                                    radius: Float = 7.5,
+                                    maxFloorDifference: Float = 1.25) -> SIMD3<Float>? {
+        guard authored.x.isFinite, authored.y.isFinite, authored.z.isFinite,
+              radius > 0, radius <= 25 else { return nil }
+        let bodyHeight: Float = 0.72
+        let nearest: (Float, Float, Float) -> SIMD3<Float>? = { x, z, y in
+            guard abs(y - authored.y) <= maxFloorDifference,
+                  y <= authored.y + 0.32,
+                  self.canOccupy(x: x, z: z, feetY: y, bodyHeight: bodyHeight)
+            else { return nil }
+            return SIMD3<Float>(x, y + eyeHeight, z)
+        }
+        if let y = floorHeight(x: authored.x, z: authored.z),
+           let exact = nearest(authored.x, authored.z, y) { return exact }
+        let steps = Int(ceil(radius / resolution))
+        var best: SIMD3<Float>?
+        var bestCost = Float.infinity
+        for dz in -steps...steps {
+            for dx in -steps...steps {
+                let x = authored.x + Float(dx) * resolution
+                let z = authored.z + Float(dz) * resolution
+                let distance = hypot(x - authored.x, z - authored.z)
+                guard distance <= radius, let y = floorHeight(x: x, z: z),
+                      let spot = nearest(x,z,y) else { continue }
+                let cost = distance + 3 * abs(y - authored.y)
+                if cost < bestCost { bestCost = cost; best = spot }
+            }
+        }
+        return best
+    }
+
 }

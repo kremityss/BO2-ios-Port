@@ -33,6 +33,47 @@ def triangles(path):
         yield a, b, c, normal
 
 
+def original_collision_triangles(metadata, binary, transform_json):
+    """Read the original deployed ThreeMeshBVH collision triangle stream.
+
+    GLB render geometry is NOT a reliable collision floor; the official web
+    collider has its own authored 383,761 vertices / 439,726 triangles.
+    All 3D coordinates use the exact transform exported by convert_gltf.py.
+    """
+    doc=json.loads(Path(metadata).read_text())
+    transform=json.loads(Path(transform_json).read_text())
+    if doc.get('format')!='collision-bvh-v1' or transform.get('map')!='mp_nuketown_2020':
+        raise ValueError('Map identity or web BVH format mismatch')
+    offset=transform.get('offset')
+    scale=float(transform.get('scale',0))
+    if not isinstance(offset,list) or len(offset)!=3 or not 0<scale<=0.1:
+        raise ValueError('Invalid native map transform')
+    data=Path(binary).read_bytes()
+    layout=doc['layout']
+    if len(data)!=doc['byteLength'] or doc['triangles']<=0:
+        raise ValueError('Incomplete original collision BVH file')
+    pos=layout['position']['byteOffset']
+    idx=layout['index']['byteOffset']
+    components=layout['position']['count']
+    if pos+components*4>len(data) or idx+doc['triangles']*12>len(data):
+        raise ValueError('Original collision BVH layout exceeds binary')
+    def vertex(n):
+        if n*3+2>=components: raise ValueError('Invalid collision vertex index')
+        coords=struct.unpack_from('<fff',data,pos+n*12)
+        return tuple((coords[i]-offset[i])*scale for i in range(3))
+    for t in range(doc['triangles']):
+        ids=struct.unpack_from('<III',data,idx+12*t)
+        a,b,c=[vertex(i) for i in ids]
+        ab=[b[i]-a[i] for i in range(3)]
+        ac=[c[i]-a[i] for i in range(3)]
+        cross=(ab[1]*ac[2]-ab[2]*ac[1],
+               ab[2]*ac[0]-ab[0]*ac[2],
+               ab[0]*ac[1]-ab[1]*ac[0])
+        magnitude=math.sqrt(sum(x*x for x in cross))
+        if magnitude < 1e-10: continue
+        yield a,b,c,tuple(x/magnitude for x in cross)
+
+
 def height_at(x, z, a, b, c):
     det = (b[2]-c[2])*(a[0]-c[0])+(c[0]-b[0])*(a[2]-c[2])
     if abs(det) < 1e-8:
@@ -48,12 +89,15 @@ def cm(y):
     return max(-32767, min(32767, round(y*100)))
 
 
-def bake(source, dest, resolution=0.75, playable_radius=None):
+def bake(source, dest, resolution=0.75, playable_radius=None, web_bvh_meta=None, web_bvh_binary=None, web_transform=None):
     if not 0.3 <= resolution <= 3.0:
         raise ValueError('resolution must be 0.3..3m')
     if playable_radius is not None and not 10 <= playable_radius <= 1000:
         raise ValueError('playable_radius must be 10..1000m')
-    tri = list(triangles(source))
+    if bool(web_bvh_meta) != bool(web_bvh_binary) or (web_bvh_meta and not web_transform):
+        raise ValueError('Original collision requires BVH metadata, binary and scene transform')
+    tri = list(original_collision_triangles(web_bvh_meta,web_bvh_binary,web_transform)
+               if web_bvh_meta else triangles(source))
     if not tri:
         raise ValueError('empty mesh')
     xs = [p[0] for a,b,c,_ in tri for p in (a,b,c)]
@@ -137,5 +181,8 @@ if __name__=='__main__':
     p.add_argument('--out',type=Path,default=Path('MerkOfDuty/Resources/MerkCollision.bin'))
     p.add_argument('--cell-size',type=float,default=0.75)
     p.add_argument('--playable-radius',type=float,default=None,help='Crop approximate collision to +/- meters around centered map origin')
+    p.add_argument('--web-bvh-meta',type=Path)
+    p.add_argument('--web-bvh-binary',type=Path)
+    p.add_argument('--web-transform',type=Path)
     x=p.parse_args()
-    bake(x.mesh,x.out,x.cell_size,x.playable_radius)
+    bake(x.mesh,x.out,x.cell_size,x.playable_radius,x.web_bvh_meta,x.web_bvh_binary,x.web_transform)
