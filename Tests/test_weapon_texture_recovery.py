@@ -19,6 +19,17 @@ class WeaponWebPTests(unittest.TestCase):
             doc={'images':[{'uri':'../images/rifle_col.dds'}]}
             self.assertEqual(image_bytes(doc,[],0,root/'viewmodel'),f.read_bytes())
 
+    def test_enemy_sibling_images_allow_only_published_webp(self):
+        with tempfile.TemporaryDirectory() as t:
+            root=Path(t);(root/'enemies').mkdir();(root/'images').mkdir()
+            image=root/'images'/'soldier_col.webp'
+            image.write_bytes(b'RIFF'+b'\x00'*4+b'WEBP'+b'soldier')
+            doc={'images':[{'uri':'../images/soldier_col.dds'}]}
+            self.assertEqual(image_bytes(doc,[],0,root/'enemies'),image.read_bytes())
+            for uri in ('../../secret.dds','../hidden/texture.dds','../images/../../secret.dds'):
+                with self.assertRaises(ValueError):
+                    image_bytes({'images':[{'uri':uri}]},[],0,root/'enemies')
+
     def test_unrelated_parent_traversal_still_rejected(self):
         with tempfile.TemporaryDirectory() as t:
             root=Path(t);(root/'viewmodel').mkdir()
