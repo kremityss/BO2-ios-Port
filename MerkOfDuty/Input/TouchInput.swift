@@ -338,7 +338,7 @@ final class FPSViewController:UIViewController {
             slide.configuration=config
         }
         if world.health<=0 {mapName.text="RESPAWNING // NUKETOWN"}
-        else {mapName.text="NUKETOWN // TDM TEST"}
+        else {mapName.text="NUKETOWN / " + world.spawnGroup.replacingOccurrences(of:"mp_",with:"").uppercased()}
     }
 
     @objc private func fireDown(){renderer.world.controls.firing=true}

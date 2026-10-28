@@ -56,7 +56,7 @@ struct Controls {
 
 final class GameWorld {
     var controls = Controls()
-    private(set) var pos = SIMD3<Float>(0, 1.65, 15)
+    private(set) var pos = SIMD3<Float>(0, 0.60, 15)
     private(set) var yaw: Float = 0
     private(set) var pitch: Float = 0
     private(set) var health: Float = 100
@@ -68,7 +68,7 @@ final class GameWorld {
     private(set) var bots: [CombatBot] = []
     private(set) var weaponIndex = 0
     private(set) var ammo = 30
-    private(set) var reserveAmmo = 150
+    private(set) var reserveAmmo = 240
     private(set) var reloadRemaining: Float = 0
     private(set) var muzzleFlash: Float = 0
     private(set) var recentHit: Float = 0
@@ -80,14 +80,22 @@ final class GameWorld {
     private var slideRemaining: Float = 0
     private var slideDirection = SIMD2<Float>(0, -1)
     private var deadTimer: Float = 0
+    private var regenDelayRemaining: Float = 0
+    private var protectionRemaining: Float = 3
+    private var slideCooldown: Float = 0
+    private let physics = WebMovement.shared
     private var rng: UInt64 = 0xA3192C41
-    private let eyeHeight: Float = 1.65
-    private let crouchHeight: Float = 1.08
-    private let bodyRadius: Float = 0.36
+    private let eyeHeight: Float = 0.60
+    private let crouchHeight: Float = 0.40
+    private let bodyRadius: Float = 0.16
     private(set) var isGrounded = true
     let levelCollision: NativeCollision?
-    private var initialPosition = SIMD3<Float>(0,1.65,15)
-    private var standingEyeHeight: Float = 1.65
+    private var initialPosition = SIMD3<Float>(0,0.60,15)
+    private var spawnRegistry: WebSpawnRegistry?
+    private var spawnCycle = 0
+    private(set) var spawnGroup: String = "FALLBACK"
+    private(set) var spawnGuid: String = ""
+    private var standingEyeHeight: Float = 0.60
     var lookSensitivity: Float = 1.0
     var hasImportedLevel: Bool { levelCollision != nil }
 
@@ -102,13 +110,22 @@ final class GameWorld {
     var right: SIMD3<Float> { SIMD3<Float>(cos(yaw), 0, sin(yaw)) }
 
     init() {
-        if let grid = NativeCollision.load(), let spawn = grid.preferredSpawn() {
+        if let grid = NativeCollision.load() {
             levelCollision = grid
-            initialPosition = spawn
-            pos = spawn
-            // Face into the central approaches, rather than outward at sky.
-            let facing = SIMD2<Float>(-12-spawn.x, 8-spawn.z)
-            yaw = atan2(facing.x, -facing.y)
+            spawnRegistry = WebSpawnRegistry.load()
+            if let pose = spawnRegistry?.select(team: 0, initial: true,
+                                                after: 0, collision: grid, eyeHeight: eyeHeight) {
+                initialPosition = pose.position
+                pos = pose.position
+                yaw = pose.yaw
+                spawnGroup = pose.group
+                spawnGuid = pose.guid
+            } else if let fallback = grid.preferredSpawn() {
+                initialPosition = fallback
+                pos = fallback
+                let facing = SIMD2<Float>(-12-fallback.x, 8-fallback.z)
+                yaw = atan2(facing.x, -facing.y)
+            }
             pitch = 0
         } else {
             levelCollision = nil
@@ -122,11 +139,16 @@ final class GameWorld {
         bots = points.enumerated().map { idx, p in
             let location:SIMD3<Float>
             if let grid=levelCollision {
-                location=(grid.safeSpawn(nearX:initialPosition.x+p.x,
-                                         z:initialPosition.z+p.z,
-                                         searchRadius:25,eyeHeight:eyeHeight,
-                                         maxGroundY:15,minimumSupport:7)
-                           ?? initialPosition) - SIMD3<Float>(0,eyeHeight,0)
+                if let pose = spawnRegistry?.select(team: 1, initial: true,
+                                                    after: idx, collision: grid, eyeHeight: eyeHeight) {
+                    location = pose.position - SIMD3<Float>(0,eyeHeight,0)
+                } else {
+                    location=(grid.safeSpawn(nearX:initialPosition.x+p.x,
+                                             z:initialPosition.z+p.z,
+                                             searchRadius:25,eyeHeight:eyeHeight,
+                                             maxGroundY:15,minimumSupport:7)
+                               ?? initialPosition) - SIMD3<Float>(0,eyeHeight,0)
+                }
             } else {location=p}
             return CombatBot(position:location,strafe:idx.isMultiple(of:2) ? 1 : -1)
         }
@@ -153,6 +175,9 @@ final class GameWorld {
         cooldown = max(0, cooldown - dt)
         muzzleFlash = max(0, muzzleFlash - dt)
         recentHit = max(0, recentHit - dt)
+        protectionRemaining = max(0, protectionRemaining - dt)
+        regenDelayRemaining = max(0, regenDelayRemaining - dt)
+        if health > 0 && regenDelayRemaining == 0 { health = min(100, health + 25 * dt) }
         if health <= 0 {
             deadTimer -= dt
             if deadTimer <= 0 { respawnPlayer() }
@@ -173,27 +198,43 @@ final class GameWorld {
         let localForward = SIMD2<Float>(sin(yaw), -cos(yaw))
         let localRight = SIMD2<Float>(cos(yaw), sin(yaw))
         let desired = localRight * move.x + localForward * move.y
-        // COD-style analog response: partial stick gives walking, full forward
-        // stick engages tactical sprint. ADS, crouch and airborne acceleration
-        // remain distinct. Input is frame-rate independent.
+        // Authoritative browser MOVEMENT_SETTINGS values, scaled from T6 units
+        // by the same 0.01 used when baking the Nuketown GLB.
         let fast = controls.sprint && !controls.ads && move.y > 0.45 && !controls.crouch
-        let speed: Float = controls.crouch ? 2.35 : (fast ? 8.2 : (controls.ads ? 3.4 : 5.6))
-        let acceleration: Float = isGrounded ? 17.0 : 5.0
-        horizontalVelocity += (desired * speed - horizontalVelocity) * min(1, dt * acceleration)
-        if controls.slideQueued && isGrounded && simd_length(horizontalVelocity) > 3.1 {
-            slideRemaining = 0.67
+        let speed: Float = controls.crouch ? physics.crouchSpeed
+            : (fast ? physics.tacticalSprintSpeed : (controls.ads ? physics.walkSpeed * 0.95 : physics.walkSpeed))
+        let hasMovement = simd_length(move) > 0.08
+        let acceleration: Float = isGrounded
+            ? (hasMovement ? physics.groundAcceleration : physics.groundDeceleration)
+            : physics.airAcceleration
+        let target = desired * speed
+        let maxChange = acceleration * dt
+        horizontalVelocity.x += max(-maxChange, min(maxChange, target.x - horizontalVelocity.x))
+        horizontalVelocity.y += max(-maxChange, min(maxChange, target.y - horizontalVelocity.y))
+        slideCooldown = max(0, slideCooldown - dt)
+        if controls.slideQueued && isGrounded && slideCooldown == 0 && fast
+            && simd_length(horizontalVelocity) >= physics.slideMinSpeed {
+            slideRemaining = physics.slideDuration
+            slideCooldown = physics.slideCooldown
             slideDirection = simd_length(horizontalVelocity) > 0.1 ? simd_normalize(horizontalVelocity) : localForward
+            let momentum = min(physics.slideSpeed, max(simd_length(horizontalVelocity), physics.slideSpeed * 0.88))
+            horizontalVelocity = slideDirection * momentum
         }
         if slideRemaining > 0 {
             slideRemaining = max(0, slideRemaining - dt)
-            horizontalVelocity = slideDirection * (7.7 + 3.2 * slideRemaining)
+            let nextSpeed = max(physics.crouchSpeed, simd_length(horizontalVelocity) * exp(-physics.slideFriction * dt))
+            horizontalVelocity = slideDirection * nextSpeed
+        }
+        if !isGrounded && simd_length(horizontalVelocity) > physics.maxAirSpeed {
+            horizontalVelocity = simd_normalize(horizontalVelocity) * physics.maxAirSpeed
         }
         if controls.jumpQueued && isGrounded {
-            verticalVelocity = 6.6
+            if slideRemaining > 0 { horizontalVelocity *= physics.slideHopBoost }
+            verticalVelocity = physics.jumpVelocity
             isGrounded = false
             slideRemaining = 0
         }
-        verticalVelocity -= 17.8 * dt
+        verticalVelocity -= physics.gravity * dt
         let targetEye = (controls.crouch || isSliding) ? crouchHeight : eyeHeight
         let oldFeet = pos.y - standingEyeHeight
         // Smooth camera height independently from physical feet; no standing
@@ -207,7 +248,7 @@ final class GameWorld {
                                  change:horizontalVelocity.y*dt)
         let ground = levelCollision?.floorHeight(x:proposed.x,z:proposed.z) ?? 0
         let feet = proposed.y-standingEyeHeight
-        if isGrounded && ground > oldFeet && ground-oldFeet <= 0.45 {
+        if isGrounded && ground > oldFeet && ground-oldFeet <= 0.20 {
             // Small curb/step-up; never teleport the player to a roof.
             proposed.y = ground+standingEyeHeight
             verticalVelocity = 0
@@ -236,11 +277,11 @@ final class GameWorld {
         }
         let probe = axis == 0 ? SIMD2<Float>(candidate, p.y) : SIMD2<Float>(p.x, candidate)
         if let grid=levelCollision {
-            let height = controls.crouch || isSliding ? crouchHeight : eyeHeight
+            let height: Float = controls.crouch || isSliding ? 0.48 : 0.72
             let footY = pos.y - standingEyeHeight
             // No instantaneous climb onto roofs or elevated platforms.
             if let nextFloor = grid.floorHeight(x:probe.x,z:probe.y),
-               nextFloor > footY + (isGrounded ? 0.45 : 0.15) {
+               nextFloor > footY + (isGrounded ? 0.20 : 0.08) {
                 return axis == 0 ? p.x : p.y
             }
             return grid.canOccupy(x:probe.x,z:probe.y,feetY:footY,bodyHeight:height)
@@ -283,11 +324,11 @@ final class GameWorld {
         var index: Int? = nil
         for i in bots.indices where bots[i].alive {
             let b = bots[i]
-            let center = b.position + SIMD3<Float>(0, 1.04, 0)
+            let center = b.position + SIMD3<Float>(0, 0.43, 0)
             let distanceAlong = simd_dot(center - origin, shotDir)
             guard distanceAlong > 0, distanceAlong < nearest else { continue }
             let miss = simd_length(origin + shotDir * distanceAlong - center)
-            if miss < 0.72 {
+            if miss < 0.26 {
                 // Blocks occlude targets (conservative AABB trace).
                 let blocked = blocks.contains { $0.solid && rayBlockDistance(origin, shotDir, $0) < distanceAlong }
                     || (levelCollision?.rayHitsWall(from:origin,direction:shotDir,distance:distanceAlong) ?? false)
@@ -297,7 +338,7 @@ final class GameWorld {
         if let i = index {
             hits += 1
             recentHit = 0.22
-            let headshot = simd_length(origin + shotDir * nearest - (bots[i].position + SIMD3<Float>(0, 1.56, 0))) < 0.35
+            let headshot = simd_length(origin + shotDir * nearest - (bots[i].position + SIMD3<Float>(0, 0.65, 0))) < 0.16
             bots[i].health -= weapon.damage * (headshot ? 1.6 : 1)
             if bots[i].health <= 0 { kills += 1; bots[i].respawnTimer = 3.2 }
         }
@@ -355,7 +396,7 @@ final class GameWorld {
                 let boxCollision=blocks.contains { $0.solid && abs(bots[i].position.x - $0.center.x) < $0.size.x / 2 + 0.4 && abs(bots[i].position.z - $0.center.z) < $0.size.z / 2 + 0.4 }
                 let mapCollision:Bool
                 if let grid=levelCollision {
-                    mapCollision = !grid.canOccupy(x:bots[i].position.x,z:bots[i].position.z,feetY:previous.y,bodyHeight:1.8)
+                    mapCollision = !grid.canOccupy(x:bots[i].position.x,z:bots[i].position.z,feetY:previous.y,bodyHeight:0.72)
                 } else { mapCollision=false }
                 if boxCollision || mapCollision {
                     bots[i].position=previous
@@ -369,13 +410,14 @@ final class GameWorld {
             if distance < 17 && bots[i].attackTimer <= 0 {
                 // Simple training-mode AI; multiplayer/netcode not ported yet.
                 bots[i].attackTimer = 1.15 + rand() * 0.8
-                let eye = bots[i].position + SIMD3<Float>(0, 1.45, 0)
+                let eye = bots[i].position + SIMD3<Float>(0, 0.56, 0)
                 let dir = normalize(cameraPosition - eye)
                 let occluded = blocks.contains { $0.solid && rayBlockDistance(eye, dir, $0) < distance }
                     || (levelCollision?.rayHitsWall(from:eye,direction:dir,distance:distance) ?? false)
-                if !occluded {
+                if !occluded && protectionRemaining <= 0 {
                     health = max(0, health - (9 + rand() * 6))
-                    if health <= 0 { deaths += 1; deadTimer = 2.0 }
+                    regenDelayRemaining = 4
+                    if health <= 0 { deaths += 1; deadTimer = 1.5 }
                 }
             }
         }
@@ -387,14 +429,30 @@ final class GameWorld {
     }
 
     private func respawnPlayer() {
-        pos = initialPosition
+        spawnCycle += 1
+        if let grid = levelCollision,
+           let pose = spawnRegistry?.select(team: 0, initial: false,
+                                            after: spawnCycle, collision: grid,
+                                            eyeHeight: eyeHeight,
+                                            threats: bots.filter { $0.alive }.map { $0.position }) {
+            pos = pose.position
+            yaw = pose.yaw
+            pitch = 0
+            spawnGroup = pose.group
+            spawnGuid = pose.guid
+        } else {
+            pos = initialPosition
+        }
         health = 100
+        protectionRemaining = 3
+        regenDelayRemaining = 0
         verticalVelocity = 0
         horizontalVelocity = .zero
         standingEyeHeight = eyeHeight
         controls.crouch = false
         controls.ads = false
         slideRemaining = 0
+        slideCooldown = 0
         reloadRemaining = 0
         isGrounded = true
         ammo = weapon.magazine

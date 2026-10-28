@@ -193,7 +193,7 @@ final class GameRenderer: NSObject, MTKViewDelegate {
             let right = world.right
             let up = simd_normalize(simd_cross(right,forward))
             let ads: Float = world.controls.ads ? 0.35 : 1.0
-            let anchor = camera + forward * 0.72 + right * (0.22 * ads) - up * (0.18 * ads)
+            let anchor = camera + forward * 0.50 + right * (0.13 * ads) - up * (0.12 * ads)
             let basis = simd_float4x4.rotateY(-world.yaw) * simd_float4x4.rotateX(world.pitch)
             var instance = GPUInstance(model:simd_float4x4.translation(anchor) * basis,
                                        tint:SIMD4<Float>(repeating:1))
@@ -219,11 +219,11 @@ final class GameRenderer: NSObject, MTKViewDelegate {
         for b in world.blocks { box(b.center, b.size, b.color) }
         for b in world.bots where b.alive {
             let p = b.position
-            box(p + SIMD3<Float>(0, 1.07, 0), SIMD3<Float>(0.56,0.87,0.35), SIMD4<Float>(0.24,0.30,0.32,1))
-            box(p + SIMD3<Float>(0, 1.65, 0), SIMD3<Float>(0.36,0.39,0.34), SIMD4<Float>(0.58,0.44,0.34,1))
-            box(p + SIMD3<Float>(-0.17, 0.42, 0), SIMD3<Float>(0.20,0.79,0.28), SIMD4<Float>(0.17,0.22,0.23,1))
-            box(p + SIMD3<Float>(0.17, 0.42, 0), SIMD3<Float>(0.20,0.79,0.28), SIMD4<Float>(0.17,0.22,0.23,1))
-            box(p + SIMD3<Float>(0, 1.9, 0), SIMD3<Float>(0.55,0.06,0.12), SIMD4<Float>(0.48,0.08,0.07,1))
+            box(p + SIMD3<Float>(0, 0.42, 0), SIMD3<Float>(0.25,0.31,0.20), SIMD4<Float>(0.24,0.30,0.32,1))
+            box(p + SIMD3<Float>(0, 0.65, 0), SIMD3<Float>(0.21,0.20,0.21), SIMD4<Float>(0.58,0.44,0.34,1))
+            box(p + SIMD3<Float>(-0.07, 0.18, 0), SIMD3<Float>(0.10,0.34,0.14), SIMD4<Float>(0.17,0.22,0.23,1))
+            box(p + SIMD3<Float>(0.07, 0.18, 0), SIMD3<Float>(0.10,0.34,0.14), SIMD4<Float>(0.17,0.22,0.23,1))
+            box(p + SIMD3<Float>(0, 0.83, 0), SIMD3<Float>(0.32,0.04,0.10), SIMD4<Float>(0.48,0.08,0.07,1))
         }
         // First-person weapon geometry is truly in the 3D world. No 2D gun sprite.
         let camera = world.cameraPosition
@@ -231,7 +231,7 @@ final class GameRenderer: NSObject, MTKViewDelegate {
         let r = world.right
         let up = normalize(simd_cross(r, f))
         let t: Float = world.controls.ads ? 0.25 : 1
-        let anchor = camera + f * 0.68 + r * (0.27 * t) - up * (0.25 * t)
+        let anchor = camera + f * 0.50 + r * (0.13 * t) - up * (0.12 * t)
         let basis = simd_float4x4.rotateY(-world.yaw) * simd_float4x4.rotateX(world.pitch)
         let steel = world.weapon.color
         func gunPiece(_ offset: SIMD3<Float>, _ extent: SIMD3<Float>, _ tint: SIMD4<Float>) {

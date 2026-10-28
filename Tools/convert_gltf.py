@@ -340,7 +340,7 @@ def align_weapon(p, direction):
     return p
 
 
-def convert(source, output, scale, limit, center=True, texture_atlas=None, weapon_length=None, max_source_coordinate=None, instances_out=None, minimum_decoded_textures=0):
+def convert(source, output, scale, limit, center=True, texture_atlas=None, weapon_length=None, max_source_coordinate=None, instances_out=None, minimum_decoded_textures=0, transform_metadata=None):
     doc, buffers = load_gltf(source)
     textured = texture_atlas is not None
     rects = {-1:(0.,0.,1.,1.)}
@@ -421,6 +421,13 @@ def convert(source, output, scale, limit, center=True, texture_atlas=None, weapo
     minp=[min(p[i] for tri,_,_,_,_ in raw_triangles for p in tri) for i in range(3)]
     maxp=[max(p[i] for tri,_,_,_,_ in raw_triangles for p in tri) for i in range(3)]
     offset=[(minp[0]+maxp[0])/2, ((minp[1]+maxp[1])/2 if weapon_length is not None else minp[1]), (minp[2]+maxp[2])/2] if center else [0,0,0]
+    if transform_metadata is not None:
+        transform_metadata.parent.mkdir(parents=True, exist_ok=True)
+        transform_metadata.write_text(json.dumps({
+            'map': 'mp_nuketown_2020', 'scale': scale, 'offset': offset,
+            'sourceBounds': [minp, maxp],
+            'note': 'Native position = (web.position - offset) * scale'
+        }, indent=2) + '\n')
     output.parent.mkdir(parents=True,exist_ok=True)
     with output.open('wb') as file:
         file.write((TEXTURED_MAGIC if textured else MAGIC) + struct.pack('<I',len(raw_triangles)*3))
@@ -536,6 +543,7 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('glb',type=Path)
     p.add_argument('--out',type=Path,default=Path('MerkOfDuty/Resources/MerkMap.meshbin'))
+    p.add_argument('--transform-metadata',type=Path,help='Write native map source-to-world transform JSON')
     p.add_argument('--scale',type=float,default=0.01)
     p.add_argument('--max-triangles',type=int,default=1_000_000)
     p.add_argument('--keep-origin',action='store_true')
@@ -545,6 +553,6 @@ def main():
     p.add_argument('--instances-out',type=Path,help='Write GPU-instanced scenery as MERKINS1; excludes prototype copies from main map')
     p.add_argument('--minimum-decoded-textures',type=int,default=0,help='Fail build if fewer albedo textures decode than this count')
     args=p.parse_args()
-    convert(args.glb,args.out,args.scale,args.max_triangles,not args.keep_origin,args.texture_atlas,args.weapon_length,args.max_source_coordinate,args.instances_out,args.minimum_decoded_textures)
+    convert(args.glb,args.out,args.scale,args.max_triangles,not args.keep_origin,args.texture_atlas,args.weapon_length,args.max_source_coordinate,args.instances_out,args.minimum_decoded_textures,args.transform_metadata)
 
 if __name__ == '__main__':main()

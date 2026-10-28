@@ -245,3 +245,52 @@ verified in the compiled and on-device IPA.
 
 These changes address a player screenshot showing a rooftop spawn and giant HUD.
 Actual on-device validation is required: this collision grid is still coarse.
+
+### Web-source parity milestone: authored Nuketown spawns (v0.7)
+
+The full-assets workflow downloads the exact `nuketown_2020_nav_hints.json`
+from the pinned Cloudflare Pages deployment. This file contains the original
+T6-authored TDM, FFA, S&D, CTF, and Domination spawn groups with coordinates and
+facing directions. `Tools/convert_gltf.py` now emits the **exact** source-to-native
+map transform used for the Metal mesh; `Tools/import_web_spawns.py` applies
+that transform and bundles `MerkWebSpawns.json` in the IPA. The native
+`WebSpawnRegistry` chooses team-specific spawns and retains authored yaw.
+
+**Known parity gap:** The native 2.5D raster is not the web game's BVH/navmesh;
+our port searches for nearby grounded floor data to prevent invalid teleports.
+Its few-metres correction can displace original spawn coordinates. To match
+all movement/physics, AI, game modes, and networking exactly, the corresponding
+web engine systems must be individually ported, implemented and device-tested.
+The native game currently runs a simplified TDM/offline bot test; the other
+spawn groups are imported for subsequent mode implementations.
+
+
+### Verified web-game reference parity (v0.8)
+
+A read-only GitHub Actions audit captured the *actual* deployed browser gameplay
+source, including `index.html`, `player-controller.js`, `movement-settings.js`,
+`enemy-system.js`, `weapons.js`, `weapon-ballistics.js`, and Nuketown navigation
+hints. The audit is in Actions as `BO2-web-reference-audit` (not shipped as JS
+in the native IPA).
+
+- **First spawn**: browser `chooseSpawn()` uses the first `mp_dm_spawn` from
+  `nuketown_2020_nav_hints.json`; the native importer preserves authored
+  position and yaw, then snaps within the collision grid's nearby valid floor.
+- **Respawn**: follows the browser `EnemySystem.safeSpawnFor()` ranking for
+  free-for-all markers: distance from threats, visibility penalty, and a
+  recent-spawn penalty. Native ray visibility is currently approximate.
+- **Movement**: the native full-assets build imports all 29 properties from
+  `movement-settings.js` into `MerkWebMovement.json`. Linear quantities use the
+  identical 0.01 scale as the map. Standing eye = 0.60, crouch eye = 0.40,
+  walk = 3.00 m/s, sprint = 4.50 m/s, tactical sprint = 5.05 m/s,
+  slide = 4.85 m/s for 0.62 s, gravity = 10.50 m/s², jump = 3.30 m/s.
+- **Health**: player has 100 HP, 3 s respawn protection, 1.5 s respawn delay,
+  4 s healing delay, and healing at 25 HP/s, matching the deployed game setup.
+- **Test diagnostics**: the native HUD displays the selected spawn entity group.
+
+**Not identical yet**: the native renderer/collision system uses a 2.5D grid
+instead of the browser's triangle octree and Recast navmesh. The current bots
+use simplified decision-making rather than the original enemy AI. Weapon
+animations, advanced recoil/ballistics, attachments, grenades, multiplayer,
+Zombies, ranked and progression remain separate porting tasks. A compiled
+IPA must still be installed and tested before these fixes are verified in play.
