@@ -40,6 +40,9 @@ if [ "$MODE" = full ]; then
     --web-bvh-meta build/recovered-map/nuketown_2020_collision_bvh.json \
     --web-bvh-binary build/recovered-map/nuketown_2020_collision_bvh.bin \
     --web-transform build/recovered-map/native-transform.json
+  python3 Tools/clear_authored_spawn_walls.py \
+    --collision MerkOfDuty/Resources/MerkCollision.bin \
+    --spawns MerkOfDuty/Resources/MerkWebSpawns.json
   python3 Tools/download_weapons.py --out build/recovered-weapons
   for item in \
     'M27:t6_wpn_ar_hk416_view_lod0' \
