@@ -87,6 +87,7 @@ if [ "$MODE" = full ]; then
       --weapon-length 1.05 --max-triangles 250000 \
       --minimum-decoded-textures 1
   done
+  python3 Tools/verify_native_map_bundle.py MerkOfDuty/Resources
 fi
 
 # Generate AFTER assets so Xcodegen will include their resource files.
