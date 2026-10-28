@@ -50,9 +50,9 @@ fragment float4 sceneFragment(Out in [[stage_in]],
     float2 atlasUV = in.atlasRect.xy + repeatUV * in.atlasRect.zw;
     float3 albedo = atlas.sample(linearSampler, atlasUV).rgb;
     float diffuse = max(0.0, dot(normalize(in.normal), normalize(uniforms.sunDirection.xyz)));
-    float ambient = 0.72;
-    float brightness = ambient + diffuse * 0.38;
+    float ambient = 0.95;
+    float brightness = ambient + diffuse * 0.44;
     // Flat black ambient was obscuring indoor materials on mobile.
     float3 lit = in.color.rgb * albedo * brightness;
-    return float4(saturate(lit * 1.14), 1.0);
+    return float4(saturate(lit * 1.20), 1.0);
 }

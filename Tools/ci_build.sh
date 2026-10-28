@@ -71,7 +71,7 @@ if [ "$MODE" = full ]; then
   python3 Tools/convert_gltf.py build/recovered-enemy/enemies/c_chn_mp_pla_assault_fb_lod2.glb \
     --out MerkOfDuty/Resources/MerkEnemyAssault.meshbin \
     --texture-atlas MerkOfDuty/Resources/MerkEnemyAssaultAtlas.png \
-    --weapon-length 1.75 --max-triangles 200000 \
+    --weapon-length 0.75 --max-triangles 200000 \
     --minimum-decoded-textures 1
   python3 Tools/download_weapons.py --out build/recovered-weapons
   for item in \

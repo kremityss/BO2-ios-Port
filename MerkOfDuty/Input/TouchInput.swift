@@ -279,7 +279,7 @@ final class FPSViewController:UIViewController {
         mapPicker=UIButton(type:.system)
         mapPicker.setTitle("MAPS  ▾",for:.normal)
         mapPicker.setTitleColor(.white,for:.normal)
-        mapPicker.titleLabel?.font=.systemFont(ofSize:12,weight:.heavy)
+        mapPicker.titleLabel?.font = .systemFont(ofSize:12,weight:.heavy)
         mapPicker.backgroundColor=UIColor.black.withAlphaComponent(0.54)
         mapPicker.layer.cornerRadius=10
         mapPicker.layer.borderWidth=1

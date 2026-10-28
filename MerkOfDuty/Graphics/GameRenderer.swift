@@ -203,7 +203,7 @@ final class GameRenderer: NSObject, MTKViewDelegate {
             encoder.setVertexBuffer(enemyBuffer,offset:0,index:0)
             for (index,bot) in world.bots.enumerated() where bot.alive {
                 var enemy = GPUInstance(
-                    model:simd_float4x4.translation(bot.position + SIMD3<Float>(0,0.86,0))
+                    model:simd_float4x4.translation(bot.position + SIMD3<Float>(0,0.375,0))
                         * simd_float4x4.rotateY(Float(index % 2) * Float.pi),
                     tint:SIMD4<Float>(repeating:1))
                 encoder.setVertexBytes(&enemy,length:MemoryLayout<GPUInstance>.stride,index:2)
