@@ -40,7 +40,7 @@ final class GameRenderer: NSObject, MTKViewDelegate {
         let config = MTLRenderPipelineDescriptor()
         config.vertexFunction = vertex
         config.fragmentFunction = fragment
-        config.colorAttachments[0].pixelFormat = .bgra8Unorm
+        config.colorAttachments[0].pixelFormat = .bgra8Unorm_srgb
         config.depthAttachmentPixelFormat = .depth32Float
         guard let pipe = try? d.makeRenderPipelineState(descriptor: config) else { return nil }
         pipeline = pipe
@@ -128,7 +128,7 @@ final class GameRenderer: NSObject, MTKViewDelegate {
         } else { enemyTexture=white }
         super.init()
         view.device = d
-        view.colorPixelFormat = .bgra8Unorm
+        view.colorPixelFormat = .bgra8Unorm_srgb
         view.depthStencilPixelFormat = .depth32Float
         view.clearColor = MTLClearColor(red: 0.46, green: 0.61, blue: 0.70, alpha: 1)
         view.preferredFramesPerSecond = 60
